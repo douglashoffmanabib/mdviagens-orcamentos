@@ -51,6 +51,7 @@ Formato exato do JSON:
           "para": "IATA destino", "paraCidade": "cidade destino",
           "cia": "nome da companhia (ex: LATAM, GOL, AZUL)",
           "iata": "código IATA da companhia (LATAM=LA, GOL=G3, AZUL=AD, AVIANCA=AV)",
+          "voo": "número do voo se aparecer (ex: G3 1137), senão null",
           "saida": "HH:MM", "chegada": "HH:MM", "dur": "ex: 4h15",
           "classe": "ex: Econômica",
           "conexao": "texto da conexão, ou 'Voo direto'",
