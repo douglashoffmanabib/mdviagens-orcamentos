@@ -95,10 +95,29 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const pdfBase64 = body && body.pdfBase64;
-  if (!pdfBase64) return res.status(400).json({ error: 'Envie { pdfBase64 } no corpo da requisição.' });
+  // aceita PDF e imagens. Formatos possíveis do corpo:
+  //   { arquivos: [ { data:<base64>, mime:"application/pdf"|"image/png"|... }, ... ] }
+  //   { pdfBase64List: [...] }  ou  { pdfBase64: "..." }  (compatibilidade)
+  let arquivos = [];
+  if (Array.isArray(body && body.arquivos)) arquivos = body.arquivos;
+  else if (Array.isArray(body && body.pdfBase64List)) arquivos = body.pdfBase64List.map(d => ({ data: d, mime: 'application/pdf' }));
+  else if (body && body.pdfBase64) arquivos = [{ data: body.pdfBase64, mime: 'application/pdf' }];
+  arquivos = arquivos.filter(a => a && a.data);
+  if (!arquivos.length) return res.status(400).json({ error: 'Envie { arquivos } (PDF ou imagem).' });
 
   const model = process.env.EXTRACT_MODEL || 'claude-sonnet-5';
+
+  const content = arquivos.map(a => {
+    const mime = a.mime || 'application/pdf';
+    if (mime.indexOf('image/') === 0) {
+      return { type: 'image', source: { type: 'base64', media_type: mime, data: a.data } };
+    }
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } };
+  });
+  const merge = arquivos.length > 1
+    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, seguro, etc. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente.'
+    : '';
+  content.push({ type: 'text', text: SCHEMA_PROMPT + merge });
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -111,13 +130,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model,
         max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
-            { type: 'text', text: SCHEMA_PROMPT }
-          ]
-        }]
+        messages: [{ role: 'user', content }]
       })
     });
 
