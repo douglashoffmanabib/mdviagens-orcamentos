@@ -1,75 +1,109 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Extrator de Orçamento · MD Viagens</title>
+<title>Extrator de Orçamentos · MD Viagens</title>
 <style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#eef1f6;color:#1f2937;margin:0;padding:32px}
-  .box{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e6e9ef;border-radius:14px;padding:26px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#eef1f6;color:#1f2937;margin:0;padding:0}
+  .topbar{background:#16264a;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 26px}
+  .topbar .logo{height:60px}
+  .topbar .tt{color:#fff;font-size:15px;font-weight:600;letter-spacing:2px;text-transform:uppercase;opacity:.85}
+  .topbar .tt a{color:#c3a063;text-decoration:none;margin-left:16px;font-size:13px;letter-spacing:.3px;text-transform:none}
+  .page{padding:28px 18px}
+  .box{max-width:820px;margin:0 auto;background:#fff;border:1px solid #e6e9ef;border-radius:14px;padding:26px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  @media(max-width:560px){.topbar .logo{height:44px}.topbar .tt{font-size:12px}}
   h1{color:#16264a;font-size:22px;margin:0 0 4px}
   p{color:#6b7280;font-size:14px;margin:0 0 18px}
-  .drop{border:2px dashed #c3a063;border-radius:12px;padding:26px;text-align:center;background:#faf6ea;cursor:pointer}
+  p a{color:#16264a;font-weight:700}
+  .drop{border:2px dashed #c3a063;border-radius:12px;padding:26px;text-align:center;background:#faf6ea;cursor:pointer;display:block}
   .drop input{display:none}
-  .btn{margin-top:16px;background:#16264a;color:#fff;border:none;border-radius:30px;padding:12px 26px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn{border:none;border-radius:30px;padding:11px 22px;font-size:14.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;color:#fff}
   .btn:disabled{opacity:.5;cursor:default}
-  pre{background:#0b1830;color:#d7e2f2;padding:16px;border-radius:10px;overflow:auto;font-size:12.5px;max-height:460px;margin-top:18px;white-space:pre-wrap}
+  .go{background:#16264a;margin-top:16px}
   .status{margin-top:14px;font-size:14px;color:#16264a;font-weight:600}
   .err{color:#b42318}
+  .res{margin-top:18px}
+  .card{background:#f7f9fc;border:1px solid #e6e9ef;border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .card.fail{background:#fdf1f0;border-color:#f3c9c4}
+  .card .info{flex:1;min-width:180px}
+  .card .cli{font-weight:700;color:#16264a;font-size:14.5px}
+  .card .meta{font-size:12px;color:#6b7280;margin-top:2px}
+  .card .cod{font-family:ui-monospace,monospace;font-size:11.5px;color:#a8863f;background:#faf6ea;border:1px solid #e5d6b0;padding:2px 8px;border-radius:6px}
+  .abrir{background:#16264a}.wpp{background:#25D366}.copiar{background:#c3a063}
+  .mini{font-size:12.5px;padding:8px 14px}
 </style></head>
 <body>
+  <div class="topbar">
+    <img class="logo" src="%%MDLOGO%%" alt="MD Viagens">
+    <div class="tt">Orçamentos<a href="/historico.html">Histórico →</a></div>
+  </div>
+  <div class="page">
   <div class="box">
-    <h1>Extrator de Orçamento</h1>
-    <p>Selecione um PDF de orçamento. Ele será lido pela IA e devolvido em dados estruturados — o mesmo formato que alimenta a página do orçamento. &nbsp;<a href="/historico.html" style="color:#16264a;font-weight:700">Ver histórico →</a></p>
+    <h1>Extrator de Orçamentos</h1>
+    <p>Selecione um ou <b>vários</b> PDFs. Cada um vira um orçamento com link curto.</p>
     <label class="drop">
-      <input type="file" id="file" accept="application/pdf">
-      <div id="dropText">📄 Clique aqui e escolha o PDF do orçamento</div>
+      <input type="file" id="file" accept="application/pdf" multiple>
+      <div id="dropText">📄 Clique aqui e escolha os PDFs (pode selecionar vários)</div>
     </label>
-    <button class="btn" id="go" disabled>Extrair dados</button>
+    <button class="btn go" id="go" disabled>Extrair e gerar links</button>
     <div class="status" id="status"></div>
-    <div id="gerar" style="display:none;margin-top:16px">
-      <a class="btn" id="ver" target="_blank" style="background:#1f9d55;text-decoration:none;display:inline-block">Ver orçamento montado ↗</a>
-      <button class="btn" id="copiar" style="background:#c3a063;margin-left:8px">Copiar link</button>
-      <div id="linkbox" style="margin-top:10px;font-size:12px;color:#6b7280;word-break:break-all"></div>
-    </div>
-    <details style="margin-top:16px"><summary style="cursor:pointer;color:#6b7280;font-size:13px">Ver dados extraídos (JSON)</summary>
-      <pre id="out" style="display:none"></pre></details>
+    <div class="res" id="res"></div>
   </div>
 <script>
 const fileEl=document.getElementById('file'), go=document.getElementById('go'),
-      statusEl=document.getElementById('status'), out=document.getElementById('out'),
+      statusEl=document.getElementById('status'), res=document.getElementById('res'),
       dropText=document.getElementById('dropText');
-let b64=null;
+let files=[];
 fileEl.addEventListener('change',()=>{
-  const f=fileEl.files[0]; if(!f)return;
-  dropText.textContent='📄 '+f.name;
-  const rd=new FileReader();
-  rd.onload=()=>{ b64=rd.result.split(',')[1]; go.disabled=false; };
-  rd.readAsDataURL(f);
+  files=[...fileEl.files];
+  if(!files.length){go.disabled=true;dropText.textContent='📄 Clique aqui e escolha os PDFs (pode selecionar vários)';return;}
+  dropText.textContent='📄 '+files.length+' arquivo(s) selecionado(s)';
+  go.disabled=false;
 });
+function toB64(file){return new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(rd.result.split(',')[1]);rd.readAsDataURL(file);});}
+function waLink(url,cliente,tel,destino){
+  const dest=(destino||'').trim();
+  const linha1 = dest ? `Segue o orçamento para *${dest}*:` : 'Segue o seu orçamento de viagem:';
+  const msg=`Olá${cliente?', '+cliente:''}! 😊 ${linha1}\n${url}\n\nQualquer dúvida, é só me chamar!\nGabriela · MD Viagens`;
+  let num=(tel||'').replace(/\D/g,'');
+  if(num && num.length<=11) num='55'+num; // adiciona DDI Brasil quando faltar
+  return 'https://wa.me/'+num+'?text='+encodeURIComponent(msg);
+}
+function addCard(r){
+  if(r.ok){
+    res.insertAdjacentHTML('beforeend',`<div class="card">
+      <div class="info"><div class="cli">${r.cliente||'Orçamento'}</div><div class="meta">${r.arquivo}</div></div>
+      <span class="cod">${r.codigo||''}</span>
+      <a class="btn mini abrir" href="${r.url}" target="_blank">Abrir ↗</a>
+      <a class="btn mini wpp" href="${r.wa}" target="_blank">WhatsApp</a>
+      <button class="btn mini copiar" onclick="navigator.clipboard.writeText('${r.url}');this.textContent='Copiado!'">Copiar</button>
+    </div>`);
+  }else{
+    res.insertAdjacentHTML('beforeend',`<div class="card fail"><div class="info"><div class="cli">Falhou: ${r.arquivo}</div><div class="meta err">${r.erro}</div></div></div>`);
+  }
+}
 go.addEventListener('click',async()=>{
-  if(!b64)return;
-  go.disabled=true; out.style.display='none'; statusEl.className='status';
-  statusEl.textContent='Lendo o PDF com a IA… (pode levar alguns segundos)';
-  try{
-    const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pdfBase64:b64})});
-    const j=await r.json();
-    if(!r.ok){ statusEl.className='status err'; statusEl.textContent='Erro: '+(j.error||r.status)+(j.detail?(' — '+j.detail):''); }
-    else{
-      statusEl.textContent='✔ Extração concluída. Gerando link…';
-      out.style.display='block'; out.textContent=JSON.stringify(j.data,null,2);
-      // salva no histórico e gera link curto; se o armazenamento falhar, cai no link longo (hash)
+  if(!files.length)return;
+  go.disabled=true; res.innerHTML='';
+  let done=0;
+  for(const f of files){
+    done++; statusEl.className='status'; statusEl.textContent=`Processando ${done}/${files.length}: ${f.name}…`;
+    try{
+      const pdfBase64=await toB64(f);
+      const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pdfBase64})});
+      const j=await r.json();
+      if(!r.ok){ addCard({ok:false,arquivo:f.name,erro:j.error||('erro '+r.status)}); continue; }
+      let id,codigo;
+      try{ const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})}); if(sr.ok){const s=await sr.json(); id=s.id; codigo=s.codigo;} }catch(e){}
       let url;
-      try{
-        const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})});
-        if(sr.ok){ const {id}=await sr.json(); url=location.origin+'/o/'+id; }
-      }catch(e){}
-      if(!url){ const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
-      statusEl.textContent='✔ Orçamento pronto!';
-      document.getElementById('ver').href=url;
-      document.getElementById('linkbox').textContent=url;
-      document.getElementById('gerar').style.display='block';
-      document.getElementById('copiar').onclick=()=>{navigator.clipboard.writeText(url);document.getElementById('copiar').textContent='Copiado!';};
-    }
-  }catch(e){ statusEl.className='status err'; statusEl.textContent='Falha: '+e; }
+      if(id) url=location.origin+'/o/'+id;
+      else { const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
+      const cliente=(j.data.cliente&&j.data.cliente.nome)||'';
+      const tel=(j.data.cliente&&j.data.cliente.telefone)||'';
+      const destino=j.data.destinoMensagem||j.data.destinoResumo||'';
+      addCard({ok:true,arquivo:f.name,cliente,codigo:codigo||(j.data.codigo||''),url,wa:waLink(url,cliente,tel,destino)});
+    }catch(e){ addCard({ok:false,arquivo:f.name,erro:String(e)}); }
+  }
+  statusEl.textContent=`✔ Concluído — ${done} orçamento(s).`;
   go.disabled=false;
 });
 </script>
