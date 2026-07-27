@@ -48,6 +48,26 @@
   .hero{position:relative;min-height:320px;display:flex;align-items:flex-end;color:#fff;background:linear-gradient(135deg,#16264a,#20345c);background-size:cover;background-position:center}
   .pdfbtn{position:fixed;bottom:20px;right:20px;z-index:2000;background:#c3a063;color:#16264a;border:none;border-radius:30px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
   @media print{ .nav,.pdfbtn,.contactbar{display:none!important} .hero{min-height:220px} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
+  /* ===== Cotação de Voos (só-voo, estilo documento) ===== */
+  .vpage{background:#fff;min-height:100vh}
+  .vbar{background:#16264a;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;font-weight:800;letter-spacing:.5px}
+  .vbar .vbar-r{color:#c3a063;font-weight:600;font-size:14px}
+  .vwrap{max-width:900px;margin:0 auto;padding:26px 28px}
+  .vhead{display:flex;gap:22px;align-items:flex-start;margin-bottom:20px}
+  .vlogo{width:150px;height:auto;border-radius:6px;flex:0 0 auto}
+  .vtitle{color:#16264a;font-size:30px;font-weight:800;margin:0 0 8px}
+  .vsub{color:#5a6472;font-size:14px;margin-top:3px}.vsub b{color:#26303f}
+  .vsec{color:#16264a;font-size:16px;font-weight:800;margin:22px 0 10px;border-bottom:2px solid #eef1f6;padding-bottom:5px}
+  .vtable{width:100%;border-collapse:collapse;font-size:13px}
+  .vtable th{background:#16264a;color:#fff;padding:8px 10px;text-align:center;font-size:12px}
+  .vtable td{border:1px solid #e6e9ef;padding:9px 10px;text-align:center;color:#26303f}
+  .vtable .c-cia img{height:26px;vertical-align:middle}
+  .vnote{font-size:12.5px;color:#6b7280;margin-top:8px}
+  .vval{font-size:15px;color:#26303f;display:flex;justify-content:space-between;max-width:420px}.vval b{color:#16264a;font-size:18px}
+  .vcond{margin:2px 0 0;padding-left:18px}.vcond li{font-size:13px;color:#4a5568;margin-bottom:8px;line-height:1.5}
+  .vcontact{margin-top:22px;font-size:13.5px;color:#26303f}.vcontact a{color:#16264a;font-weight:700}
+  .vfoot{background:#16264a;color:#c3a063;text-align:center;padding:14px;font-weight:700;font-size:14px}
+  @media(max-width:640px){.vtable{font-size:11px}.vtable th,.vtable td{padding:6px 5px}.vlogo{width:96px}.vtitle{font-size:22px}}
   .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,38,74,.12),rgba(22,38,74,.9))}
   .hero-inner{position:relative;z-index:1;max-width:1000px;margin:0 auto;width:100%;padding:30px 20px}
   .hero .eyebrow{font-size:12.5px;letter-spacing:2px;text-transform:uppercase;opacity:.85}
@@ -534,7 +554,57 @@ function render(){
   const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=links.find(l=>l.getAttribute('href')==='#'+e.target.id);if(a)a.classList.add('active');}}),{rootMargin:'-40% 0px -55% 0px'});
   nav.map(x=>x[0].slice(1)).forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
 }
-render();
+// ===== Cotação de Voos (documento) — usada quando é só aéreo =====
+function dataExt(s){const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(s||'');if(!m)return s||'';const d=new Date(+m[3],+m[2]-1,+m[1]);const wd=['dom','seg','ter','qua','qui','sex','sáb'][d.getDay()];return `${wd}, ${s}`;}
+function renderVoo(){
+  const t=(D.voos&&D.voos[0]&&D.voos[0].trechos)||[];
+  const cia=(t[0]&&t[0].cia)||'';
+  const passageiro=(D.cliente&&D.cliente.nome)||'';
+  const dataCot=(D.valores&&D.valores.cotadoEm)||'';
+  const rows=t.map(x=>`<tr>
+    <td>${x.tipo==='volta'?'Volta':'Ida'}</td>
+    <td>${dataExt(x.data)}</td>
+    <td class="c-cia">${x.iata?`<img src="https://pics.avs.io/70/32/${x.iata}.png" alt="${x.cia}" onerror="this.replaceWith(document.createTextNode('${x.cia||''}'))">`:(x.cia||'')}</td>
+    <td>${x.de} · ${x.deCidade}</td>
+    <td>${x.para} · ${x.paraCidade}</td>
+    <td>${x.saida||''}</td>
+    <td>${x.chegada||''}</td>
+    <td>${/direto/i.test(x.conexao||'')?'Voo direto':(x.conexao?'1 parada':'—')}</td>
+  </tr>`).join('');
+  const nums=t.filter(x=>x.voo).map(x=>`${x.tipo==='volta'?'volta':'ida'} voo ${x.voo}`);
+  const nota=nums.length?`<div class="vnote">${nums.join(' e ')}.</div>`:'';
+  const total=(D.valores&&D.valores.totalNum)?brl(D.valores.totalNum):'';
+  document.getElementById('app').innerHTML=`
+  <div class="vpage">
+    <div class="vbar"><span>MD VIAGENS</span><span class="vbar-r">Cotação de Voos</span></div>
+    <div class="vwrap">
+      <div class="vhead">
+        <img class="vlogo" src="${LOGOS.md}" alt="MD Viagens">
+        <div>
+          <h1 class="vtitle">Cotação de Voos</h1>
+          ${passageiro?`<div class="vsub">Passageiro: <b>${passageiro}</b></div>`:''}
+          <div class="vsub">Companhia Aérea: ${cia}${dataCot?` &nbsp;•&nbsp; Data da cotação: ${dataCot}`:''}</div>
+        </div>
+      </div>
+      <h3 class="vsec">Itinerário</h3>
+      <table class="vtable"><thead><tr><th>Trecho</th><th>Data</th><th>Cia</th><th>Origem</th><th>Destino</th><th>Saída</th><th>Chegada</th><th>Tipo</th></tr></thead><tbody>${rows}</tbody></table>
+      ${nota}
+      <h3 class="vsec">Valor</h3>
+      <div class="vval"><span>Valor total das passagens</span> <b>${total}</b></div>
+      <h3 class="vsec">Condições</h3>
+      <ul class="vcond">
+        <li>Qualquer alteração, remarcação ou cancelamento estará sujeito a multas e diferenças tarifárias, conforme as regras da companhia aérea.</li>
+        <li>Valores e disponibilidade sujeitos a alteração até o momento da emissão dos bilhetes.</li>
+        <li>Cotação válida somente para as datas e voos indicados acima.</li>
+      </ul>
+      <div class="vcontact">Fale com <b>${D.agente.nome}</b> · ${D.agente.telefone} · <a href="https://wa.me/${D.agente.whatsapp}" target="_blank">WhatsApp</a></div>
+    </div>
+    <div class="vfoot">MD VIAGENS • Consulte-nos para emissão!</div>
+  </div>
+  <button class="pdfbtn" onclick="window.print()">📄 Baixar PDF</button>`;
+}
+
+if(_ENXUTO){ renderVoo(); } else { render(); }
 
 // Puxa fotos, localização e dados do hotel em tempo real (via seu backend Hotelbeds)
 async function loadHotelbeds(){
