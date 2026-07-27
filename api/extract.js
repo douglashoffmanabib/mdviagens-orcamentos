@@ -37,6 +37,7 @@ Formato exato do JSON:
   "numero": "string (número do orçamento, ex: 4383884)",
   "cliente": { "nome": "string (nome do cliente/passageiro do título)" },
   "destinoResumo": "string (cidade/UF principal do destino)",
+  "destinoBusca": "termo curto (2-4 palavras) para buscar uma FOTO turística bonita do destino num banco de imagens. Inclua o traço mais ICÔNICO do lugar: praia, montanha, serra, cidade, natureza, cachoeira, etc. Ex.: 'Porto Seguro praia', 'Gramado inverno', 'Bonito natureza', 'Bogotá cidade', 'Foz do Iguaçu cataratas'",
   "voos": [
     {
       "rota": "Cidade origem → Cidade destino",
@@ -175,6 +176,8 @@ function enrich(d) {
     agencia: { nome: 'MD Viagens · Milhas e Destinos' },
     agente: AGENTE_FIXO,
     cliente: d.cliente || { nome: '' },
+    destinoResumo: d.destinoResumo || '',
+    destinoBusca: d.destinoBusca || d.destinoResumo || '',
     hero: {
       imagem: '', // preenchida depois pela foto do hotel (Hotelbeds) ou capa do destino
       eyebrow: `Orçamento Nº ${d.numero || ''}`,
