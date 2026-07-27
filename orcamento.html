@@ -561,7 +561,7 @@ loadHotelInfo();
 
 // Foto turística da cidade/destino na capa (Unsplash via backend)
 async function loadCityPhoto(){
-  const dest=(D.resumo&&(D.resumo.find(x=>x.k==='Destino')||{}).v) || D.destinoResumo || (D.hero&&D.hero.titulo) || '';
+  const dest=D.destinoBusca || (D.resumo&&(D.resumo.find(x=>x.k==='Destino')||{}).v) || D.destinoResumo || (D.hero&&D.hero.titulo) || '';
   if(!dest)return;
   try{
     const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,'');
