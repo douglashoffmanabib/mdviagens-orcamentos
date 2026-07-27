@@ -18,7 +18,7 @@
 <body>
   <div class="box">
     <h1>Extrator de Orçamento</h1>
-    <p>Selecione um PDF de orçamento. Ele será lido pela IA e devolvido em dados estruturados — o mesmo formato que alimenta a página do orçamento.</p>
+    <p>Selecione um PDF de orçamento. Ele será lido pela IA e devolvido em dados estruturados — o mesmo formato que alimenta a página do orçamento. &nbsp;<a href="/historico.html" style="color:#16264a;font-weight:700">Ver histórico →</a></p>
     <label class="drop">
       <input type="file" id="file" accept="application/pdf">
       <div id="dropText">📄 Clique aqui e escolha o PDF do orçamento</div>
@@ -54,10 +54,16 @@ go.addEventListener('click',async()=>{
     const j=await r.json();
     if(!r.ok){ statusEl.className='status err'; statusEl.textContent='Erro: '+(j.error||r.status)+(j.detail?(' — '+j.detail):''); }
     else{
-      statusEl.textContent='✔ Extração concluída.';
+      statusEl.textContent='✔ Extração concluída. Gerando link…';
       out.style.display='block'; out.textContent=JSON.stringify(j.data,null,2);
-      const b64=btoa(unescape(encodeURIComponent(JSON.stringify(j.data))));
-      const url=location.origin+'/orcamento.html#'+b64;
+      // salva no histórico e gera link curto; se o armazenamento falhar, cai no link longo (hash)
+      let url;
+      try{
+        const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})});
+        if(sr.ok){ const {id}=await sr.json(); url=location.origin+'/o/'+id; }
+      }catch(e){}
+      if(!url){ const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
+      statusEl.textContent='✔ Orçamento pronto!';
       document.getElementById('ver').href=url;
       document.getElementById('linkbox').textContent=url;
       document.getElementById('gerar').style.display='block';

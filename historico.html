@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Histórico de Orçamentos · MD Viagens</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#eef1f6;color:#1f2937;margin:0;padding:32px}
+  .box{max-width:900px;margin:0 auto}
+  h1{color:#16264a;font-size:24px;margin:0 0 4px}
+  .sub{color:#6b7280;font-size:14px;margin:0 0 20px}
+  .sub a{color:#16264a;font-weight:600}
+  .status{color:#6b7280;font-size:14px;margin:14px 0}
+  .card{background:#fff;border:1px solid #e6e9ef;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;box-shadow:0 1px 3px rgba(16,24,40,.04)}
+  .card .info{flex:1;min-width:200px}
+  .card .cli{font-weight:700;color:#16264a;font-size:15px}
+  .card .meta{font-size:12.5px;color:#6b7280;margin-top:2px}
+  .card .id{font-family:ui-monospace,monospace;font-size:12px;color:#c3a063;background:#faf6ea;border:1px solid #e5d6b0;padding:2px 8px;border-radius:6px}
+  .btn{border:none;border-radius:20px;padding:9px 18px;font-size:13.5px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+  .abrir{background:#1f9d55;color:#fff}
+  .copiar{background:#16264a;color:#fff}
+</style></head>
+<body>
+  <div class="box">
+    <h1>Histórico de Orçamentos</h1>
+    <p class="sub">Todos os orçamentos gerados. <a href="/extrair.html">+ Novo orçamento</a></p>
+    <div class="status" id="status">Carregando…</div>
+    <div id="lista"></div>
+  </div>
+<script>
+const statusEl=document.getElementById('status'), lista=document.getElementById('lista');
+function fmtData(ts){ if(!ts)return''; const d=new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+(async()=>{
+  try{
+    const r=await fetch('/api/list'); const arr=await r.json();
+    if(!r.ok){ statusEl.textContent='Erro: '+(arr.error||r.status); return; }
+    if(!arr.length){ statusEl.textContent='Nenhum orçamento gerado ainda.'; return; }
+    statusEl.textContent=arr.length+' orçamento(s):';
+    lista.innerHTML=arr.map(o=>{
+      const url=location.origin+'/o/'+o.id;
+      const titulo=o.cliente||o.titulo||o.codigo||'Orçamento';
+      const linha=[o.titulo||o.destino, fmtData(o.criadoEm)].filter(Boolean).join(' · ');
+      return `<div class="card">
+        <div class="info"><div class="cli">${titulo}</div><div class="meta">${linha}</div></div>
+        <span class="id">${o.codigo||('/o/'+o.id)}</span>
+        <a class="btn abrir" href="${url}" target="_blank">Abrir ↗</a>
+        <button class="btn copiar" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copiado!'">Copiar link</button>
+      </div>`;
+    }).join('');
+  }catch(e){ statusEl.textContent='Falha ao carregar: '+e; }
+})();
+</script>
+</body></html>
