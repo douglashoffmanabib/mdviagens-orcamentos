@@ -1,7 +1,7 @@
-// Salva um orçamento no Redis (Upstash) e devolve um id curto.
-// POST /api/save   body: { data: { ...ORCAMENTO... } }  ->  { id }
-// Variáveis (a integração Upstash da Vercel cria automaticamente):
-//   KV_REST_API_URL / KV_REST_API_TOKEN  (ou UPSTASH_REDIS_REST_URL / _TOKEN)
+// Salva um orçamento no Redis (Upstash), gera código por tipo e link com nome do cliente.
+// POST /api/save   body: { data: {...} }  ->  { id, codigo }
+//   id  = slug-do-cliente + código  (ex.: ricardo-heleno-pct00042)  -> vira /o/<id>
+//   código = PCT/AER/HTL/SGR/CAR + número sequencial (ex.: PCT00042)
 
 function creds() {
   return {
@@ -19,11 +19,26 @@ async function redis(cmd) {
   if (!r.ok) throw new Error('redis ' + r.status + ' ' + (await r.text()).slice(0, 200));
   return (await r.json()).result;
 }
-function genId(n = 6) {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s = '';
-  for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
-  return s;
+
+// remove acentos, espaços e símbolos -> "ricardo-heleno"
+function slugify(s) {
+  return (s || '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'cliente';
+}
+
+// define o tipo do orçamento pelos produtos presentes
+function tipoDoOrcamento(d) {
+  const hasAereo = Array.isArray(d.voos) && d.voos.some(v => v.trechos && v.trechos.length);
+  const hasHotel = !!(d.hotel && d.hotel.nome);
+  const hasSeguro = !!d.seguro;
+  const hasCarro = !!d.carro; // reservado para locação de veículo (futuro)
+  const count = [hasAereo, hasHotel, hasSeguro, hasCarro].filter(Boolean).length;
+  if (count >= 2) return 'PCT';       // pacote
+  if (hasAereo) return 'AER';         // só aéreo
+  if (hasHotel) return 'HTL';         // só hotel
+  if (hasSeguro) return 'SGR';        // só seguro
+  if (hasCarro) return 'CAR';         // só carro
+  return 'ORC';
 }
 
 module.exports = async (req, res) => {
@@ -42,19 +57,31 @@ module.exports = async (req, res) => {
   if (!data) return res.status(400).json({ error: 'Envie { data }.' });
 
   try {
-    const id = genId();
+    // código sequencial por tipo
+    const tipo = tipoDoOrcamento(data);
+    const seq = await redis(['INCR', 'seq:' + tipo]);
+    const codigo = tipo + String(seq).padStart(5, '0'); // ex.: PCT00042
+
+    // grava o código nos dados e na capa
+    data.codigo = codigo;
+    data.hero = data.hero || {};
+    data.hero.eyebrow = 'Orçamento ' + codigo;
+
+    // id do link = nome do cliente + código
+    const id = slugify(data.cliente && data.cliente.nome) + '-' + codigo.toLowerCase();
+
     await redis(['SET', 'orc:' + id, JSON.stringify(data)]);
     const meta = {
-      id,
-      numero: data.numero || '',
+      id, codigo, tipo,
       cliente: (data.cliente && data.cliente.nome) || '',
       titulo: (data.hero && data.hero.titulo) || '',
       destino: data.destinoResumo || '',
       criadoEm: Date.now()
     };
     await redis(['LPUSH', 'orc:index', JSON.stringify(meta)]);
-    await redis(['LTRIM', 'orc:index', 0, 499]); // mantém os 500 mais recentes
-    return res.status(200).json({ id });
+    await redis(['LTRIM', 'orc:index', 0, 999]);
+
+    return res.status(200).json({ id, codigo });
   } catch (e) {
     return res.status(500).json({ error: 'Falha ao salvar', detail: String(e).slice(0, 300) });
   }
