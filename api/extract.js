@@ -35,9 +35,10 @@ Extraia fielmente o que estiver no documento. Use null quando não houver a info
 Formato exato do JSON:
 {
   "numero": "string (número do orçamento, ex: 4383884)",
-  "cliente": { "nome": "string (nome do cliente/passageiro do título)" },
+  "cliente": { "nome": "string (nome do cliente/passageiro do título)", "telefone": "telefone do cliente se aparecer no documento (ex: (31) 99999-9999), senão null" },
   "destinoResumo": "string (cidade/UF principal do destino)",
   "destinoBusca": "termo curto (2-4 palavras) para buscar uma FOTO turística bonita do destino num banco de imagens. Inclua o traço mais ICÔNICO do lugar: praia, montanha, serra, cidade, natureza, cachoeira, etc. Ex.: 'Porto Seguro praia', 'Gramado inverno', 'Bonito natureza', 'Bogotá cidade', 'Foz do Iguaçu cataratas'",
+  "destinoMensagem": "nome do destino para a mensagem de WhatsApp: a CIDADE quando for no Brasil; o PAÍS quando for fora do Brasil (ex.: 'Porto Seguro', 'Gramado', 'Colômbia', 'Portugal')",
   "voos": [
     {
       "rota": "Cidade origem → Cidade destino",
@@ -178,6 +179,7 @@ function enrich(d) {
     cliente: d.cliente || { nome: '' },
     destinoResumo: d.destinoResumo || '',
     destinoBusca: d.destinoBusca || d.destinoResumo || '',
+    destinoMensagem: d.destinoMensagem || (d.destinoResumo || '').split(',')[0].trim(),
     hero: {
       imagem: '', // preenchida depois pela foto do hotel (Hotelbeds) ou capa do destino
       eyebrow: `Orçamento Nº ${d.numero || ''}`,

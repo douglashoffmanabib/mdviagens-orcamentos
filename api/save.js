@@ -74,6 +74,8 @@ module.exports = async (req, res) => {
     const meta = {
       id, codigo, tipo,
       cliente: (data.cliente && data.cliente.nome) || '',
+      telefone: (data.cliente && data.cliente.telefone) || '',
+      destinoMsg: data.destinoMensagem || data.destinoResumo || '',
       titulo: (data.hero && data.hero.titulo) || '',
       destino: data.destinoResumo || '',
       criadoEm: Date.now()
