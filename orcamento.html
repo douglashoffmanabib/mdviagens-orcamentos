@@ -547,7 +547,6 @@ async function loadHotelInfo(){
     if(!r.ok)return; const d=await r.json();
     if(d.photoRefs&&d.photoRefs.length){
       D.hotel.fotos=d.photoRefs.map(ref=>base+'/api/place-photo?ref='+encodeURIComponent(ref));
-      D.hero.imagem=D.hotel.fotos[0];
     }
     if(d.coordinates&&d.coordinates.lat)D.hotel.geo={lat:+d.coordinates.lat,lon:+d.coordinates.lon};
     D.hotel.tripadvisor=D.hotel.tripadvisor||{};
@@ -559,6 +558,19 @@ async function loadHotelInfo(){
   }catch(e){console.warn('hotel-photos:',e);}
 }
 loadHotelInfo();
+
+// Foto turística da cidade/destino na capa (Unsplash via backend)
+async function loadCityPhoto(){
+  const dest=(D.resumo&&(D.resumo.find(x=>x.k==='Destino')||{}).v) || D.destinoResumo || (D.hero&&D.hero.titulo) || '';
+  if(!dest)return;
+  try{
+    const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,'');
+    const r=await fetch(base+'/api/city-photo?q='+encodeURIComponent(dest));
+    if(!r.ok)return; const d=await r.json();
+    if(d.imagem){ D.hero.imagem=d.imagem; render(); }
+  }catch(e){console.warn('city-photo:',e);}
+}
+loadCityPhoto();
 </script>
 </body>
 </html>
