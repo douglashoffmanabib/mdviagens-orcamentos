@@ -376,11 +376,11 @@ function render(){
   const temVoos=!!(D.voos&&D.voos.length);
   const temHotel=!!(D.hotel&&D.hotel.nome);
   const temMapa=!!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
+  const enxuto=temVoos&&!temHotel; // só aéreo -> versão enxuta (sem transfer/seguro)
   const nav=[["#top","Início"]];
   if(temVoos) nav.push(["#voos","Voos"]);
   if(temHotel) nav.push(["#hotel","Hotel"]);
-  nav.push(["#transfer","Transfer"]);
-  nav.push(["#seguro","Seguro"]);
+  if(!enxuto){ nav.push(["#transfer","Transfer"]); nav.push(["#seguro","Seguro"]); }
   if(temMapa) nav.push(["#mapas","Mapas"]);
   nav.push(["#valores","Investimento"],["#contato","Contato"],["#porque","Diferenciais"],["#quemsomos","Quem somos"]);
 
@@ -414,7 +414,7 @@ function render(){
 
     ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem</h2></div>${buildHotel(D.hotel)}</section>`:''}
 
-    <section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
+    ${!enxuto?`<section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
       ${D.transfer
         ?`<div class="card trf"><span class="ic2">🚐</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p></div></div>`
         :`<div class="card trf"><span class="ic2">🚐</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div>`}
@@ -424,7 +424,7 @@ function render(){
       ${D.seguro
         ?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p></div></div>`
         :`<div class="card trf"><span class="ic2">🛡️</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
-    </section>
+    </section>`:''}
 
     ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapas</h2></div>
       ${(D.mapaVoo&&D.mapaVoo.ida)?`<div class="map-split ${D.mapaVoo.volta?'two':'one'}">
