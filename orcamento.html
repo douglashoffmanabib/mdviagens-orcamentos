@@ -335,6 +335,8 @@ function buildFlights(list){
 }
 
 function buildHotel(h){
+  if(!h||!h.nome) return '';
+  h.fotos=h.fotos||[]; h.quartos=h.quartos||[];
   const slides=h.fotos.map(s=>`<img src="${s}" alt="${h.nome}">`).join("");
   const dots=h.fotos.map((_,i)=>`<i class="${i===0?'on':''}" data-i="${i}"></i>`).join("");
   const rooms=h.quartos.map(q=>`<tr><td><b>${q.nome}</b><br><span style="color:var(--muted)">${q.ocupacao}</span></td><td>${q.plano}</td><td><span class="pill ${q.cor}">${q.restricao}</span></td></tr>`).join("");
@@ -371,10 +373,16 @@ function buildMapaRota(m){
 }
 
 function render(){
-  const nav=[["#top","Início"],["#voos","Voos"],["#hotel","Hotel"]];
+  const temVoos=!!(D.voos&&D.voos.length);
+  const temHotel=!!(D.hotel&&D.hotel.nome);
+  const temMapa=!!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
+  const nav=[["#top","Início"]];
+  if(temVoos) nav.push(["#voos","Voos"]);
+  if(temHotel) nav.push(["#hotel","Hotel"]);
   nav.push(["#transfer","Transfer"]);
   nav.push(["#seguro","Seguro"]);
-  nav.push(["#mapas","Mapas"],["#valores","Investimento"],["#contato","Contato"],["#porque","Diferenciais"],["#quemsomos","Quem somos"]);
+  if(temMapa) nav.push(["#mapas","Mapas"]);
+  nav.push(["#valores","Investimento"],["#contato","Contato"],["#porque","Diferenciais"],["#quemsomos","Quem somos"]);
 
   document.getElementById('app').innerHTML=`
   <div class="topbar">
@@ -402,9 +410,9 @@ function render(){
   <div class="wrap">
     <section id="resumo"><div class="grid">${D.resumo.map(s=>`<div class="stat"><div class="k">${s.k}</div><div class="v">${s.v}</div></div>`).join("")}</div></section>
 
-    <section id="voos"><div class="sec-head"><span class="ic">✈️</span><h2>Voos</h2></div>${buildFlights(D.voos)}</section>
+    ${temVoos?`<section id="voos"><div class="sec-head"><span class="ic">✈️</span><h2>Voos</h2></div>${buildFlights(D.voos)}</section>`:''}
 
-    <section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem</h2></div>${buildHotel(D.hotel)}</section>
+    ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem</h2></div>${buildHotel(D.hotel)}</section>`:''}
 
     <section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
       ${D.transfer
@@ -418,13 +426,13 @@ function render(){
         :`<div class="card trf"><span class="ic2">🛡️</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
     </section>
 
-    <section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapas</h2></div>
-      <div class="map-split ${D.mapaVoo.volta?'two':'one'}">
+    ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapas</h2></div>
+      ${(D.mapaVoo&&D.mapaVoo.ida)?`<div class="map-split ${D.mapaVoo.volta?'two':'one'}">
         <div class="card mini"><div class="cap">🛫 Ida · ${D.mapaVoo.ida.rota}</div><div id="mapIda" class="minimap"></div></div>
         ${D.mapaVoo.volta?`<div class="card mini"><div class="cap">🛬 Volta · ${D.mapaVoo.volta.rota}</div><div id="mapVolta" class="minimap"></div></div>`:''}
-      </div>
-      <div class="card map-card" style="padding-bottom:0"><div class="cap" style="padding-bottom:8px">📍 Localização do hotel · ${D.hotel.nome}</div><div id="hotelmap"></div></div>
-    </section>
+      </div>`:''}
+      ${temHotel?`<div class="card map-card" style="padding-bottom:0"><div class="cap" style="padding-bottom:8px">📍 Localização do hotel · ${D.hotel.nome}</div><div id="hotelmap"></div></div>`:''}
+    </section>`:''}
 
     <section id="valores"><div class="sec-head"><span class="ic">💳</span><h2>Forma de Investimento</h2></div>
       ${buildInvest(D.valores)}
@@ -471,12 +479,15 @@ function render(){
     </div></div>
   <footer>MD Viagens · Orçamento ${D.numero} · Agência homologada Cadastur</footer>`;
 
-  // carousel
-  window._ci=0;const track=document.querySelector('#carousel .track');const dots=[...document.querySelectorAll('#carousel .dots i')];
-  const n=D.hotel.fotos.length;
-  window.slide=(d)=>{window._ci=(window._ci+d+n)%n;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((x,i)=>x.classList.toggle('on',i===window._ci));};
-  dots.forEach(x=>x.addEventListener('click',()=>{window._ci=+x.dataset.i;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci));}));
-  setInterval(()=>window.slide(1),5000);
+  // carousel (só quando há hotel com fotos)
+  const track=document.querySelector('#carousel .track');
+  if(track){
+    window._ci=0;const dots=[...document.querySelectorAll('#carousel .dots i')];
+    const n=((D.hotel&&D.hotel.fotos)||[]).length||1;
+    window.slide=(d)=>{window._ci=(window._ci+d+n)%n;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((x,i)=>x.classList.toggle('on',i===window._ci));};
+    dots.forEach(x=>x.addEventListener('click',()=>{window._ci=+x.dataset.i;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci));}));
+    if(n>1) setInterval(()=>window.slide(1),5000);
+  }
 
   // leaflet maps (rota ida/volta + localização do hotel) com mapa real
   function initMaps(){
@@ -490,10 +501,11 @@ function render(){
       pts.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
       m.fitBounds(ll,{padding:[36,36]});
     }
-    routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
-    if(D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#a8863f');
+    if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
+    if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#a8863f');
 
-    // Localização real do hotel: usa as coordenadas da cotação; se não houver, geocodifica o endereço da cotação.
+    // Localização real do hotel (só se houver a seção do mapa do hotel)
+    if(!document.getElementById('hotelmap') || !D.hotel) return;
     function showHotel(lat,lon){
       const hm=L.map('hotelmap',{scrollWheelZoom:false}).setView([lat,lon],15);
       OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(D.hotel.nome).openPopup();
