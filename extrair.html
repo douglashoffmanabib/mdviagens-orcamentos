@@ -33,6 +33,8 @@
   .modo{margin-top:14px;display:flex;flex-direction:column;gap:8px}
   .modo label{font-size:13.5px;color:#26303f;cursor:pointer;display:flex;align-items:center;gap:8px}
   .modo label span{color:#6b7280;font-size:12px}
+  .cli{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap}
+  .cli input{flex:1;min-width:180px;padding:10px 12px;border:1px solid #e6e9ef;border-radius:10px;font-size:14px}
 </style></head>
 <body>
   <div class="topbar">
@@ -50,6 +52,10 @@
     <div class="modo">
       <label><input type="radio" name="modo" value="cada" checked> Um orçamento por arquivo</label>
       <label><input type="radio" name="modo" value="juntar"> Juntar os arquivos num orçamento só <span>(ex.: hotel + voo, ou ida + volta)</span></label>
+    </div>
+    <div class="cli">
+      <input type="text" id="cliNome" placeholder="Nome do cliente">
+      <input type="text" id="cliTel" placeholder="WhatsApp do cliente (opcional)">
     </div>
     <button class="btn go" id="go" disabled>Extrair e gerar links</button>
     <div class="status" id="status"></div>
@@ -94,6 +100,10 @@ async function gerar(arquivos,label){
     const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arquivos})});
     const j=await r.json();
     if(!r.ok){ addCard({ok:false,arquivo:label,erro:j.error||('erro '+r.status)}); return; }
+    // nome/telefone do cliente informados na tela sobrescrevem o extraído
+    const cn=(document.getElementById('cliNome').value||'').trim();
+    const ct=(document.getElementById('cliTel').value||'').trim();
+    if(cn||ct){ j.data.cliente=j.data.cliente||{}; if(cn)j.data.cliente.nome=cn; if(ct)j.data.cliente.telefone=ct; }
     let id,codigo;
     try{ const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})}); if(sr.ok){const s=await sr.json(); id=s.id; codigo=s.codigo;} }catch(e){}
     let url;

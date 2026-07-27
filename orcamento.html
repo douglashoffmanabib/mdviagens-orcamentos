@@ -45,7 +45,9 @@
   .nav a.link:hover,.nav a.link.active{opacity:1;border-color:var(--gold)}
 
   /* HERO */
-  .hero{position:relative;min-height:320px;display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center}
+  .hero{position:relative;min-height:320px;display:flex;align-items:flex-end;color:#fff;background:linear-gradient(135deg,#16264a,#20345c);background-size:cover;background-position:center}
+  .pdfbtn{position:fixed;bottom:20px;right:20px;z-index:2000;background:#c3a063;color:#16264a;border:none;border-radius:30px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  @media print{ .nav,.pdfbtn,.contactbar{display:none!important} .hero{min-height:220px} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
   .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,38,74,.12),rgba(22,38,74,.9))}
   .hero-inner{position:relative;z-index:1;max-width:1000px;margin:0 auto;width:100%;padding:30px 20px}
   .hero .eyebrow{font-size:12.5px;letter-spacing:2px;text-transform:uppercase;opacity:.85}
@@ -294,8 +296,10 @@ const _FOTOS_PADRAO=[
   "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80"];
+// só-voo (enxuto): sem foto de cidade e sem mapas
+const _ENXUTO = !!(D.voos && D.voos.length) && !(D.hotel && D.hotel.nome);
 if(D.hotel && (!D.hotel.fotos || !D.hotel.fotos.length)) D.hotel.fotos=_FOTOS_PADRAO;
-if(D.hero && !D.hero.imagem) D.hero.imagem=(D.hotel && D.hotel.fotos && D.hotel.fotos[0]) || _FOTOS_PADRAO[2];
+if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hotel && D.hotel.fotos && D.hotel.fotos[0]) || _FOTOS_PADRAO[2];
 if(D.hotel && !D.hotel.tripadvisor) D.hotel.tripadvisor={nota:null,avaliacoes:null,resenhas:[]};
 if(D.hotel && D.hotel.tripadvisor && !D.hotel.tripadvisor.resenhas) D.hotel.tripadvisor.resenhas=[];
 const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
@@ -375,8 +379,8 @@ function buildMapaRota(m){
 function render(){
   const temVoos=!!(D.voos&&D.voos.length);
   const temHotel=!!(D.hotel&&D.hotel.nome);
-  const temMapa=!!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
-  const enxuto=temVoos&&!temHotel; // só aéreo -> versão enxuta (sem transfer/seguro)
+  const enxuto=temVoos&&!temHotel; // só aéreo -> versão enxuta (sem transfer/seguro/mapas/foto)
+  const temMapa=!enxuto && !!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
   const nav=[["#top","Início"]];
   if(temVoos) nav.push(["#voos","Voos"]);
   if(temHotel) nav.push(["#hotel","Hotel"]);
@@ -477,7 +481,8 @@ function render(){
       <img src="${LOGOS.sakura}" alt="Sakura Consolidadora">
       <img src="${LOGOS.patria}" alt="Pátria Consolidadora">
     </div></div>
-  <footer>MD Viagens · Orçamento ${D.numero} · Agência homologada Cadastur</footer>`;
+  <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>
+  <button class="pdfbtn" onclick="window.print()">📄 Baixar PDF</button>`;
 
   // carousel (só quando há hotel com fotos)
   const track=document.querySelector('#carousel .track');
@@ -573,6 +578,7 @@ loadHotelInfo();
 
 // Foto turística da cidade/destino na capa (Unsplash via backend)
 async function loadCityPhoto(){
+  if(_ENXUTO)return; // só-voo não usa foto de cidade
   const dest=D.destinoBusca || (D.resumo&&(D.resumo.find(x=>x.k==='Destino')||{}).v) || D.destinoResumo || (D.hero&&D.hero.titulo) || '';
   if(!dest)return;
   try{
