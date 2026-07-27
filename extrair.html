@@ -30,6 +30,9 @@
   .card .cod{font-family:ui-monospace,monospace;font-size:11.5px;color:#a8863f;background:#faf6ea;border:1px solid #e5d6b0;padding:2px 8px;border-radius:6px}
   .abrir{background:#16264a}.wpp{background:#25D366}.copiar{background:#c3a063}
   .mini{font-size:12.5px;padding:8px 14px}
+  .modo{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+  .modo label{font-size:13.5px;color:#26303f;cursor:pointer;display:flex;align-items:center;gap:8px}
+  .modo label span{color:#6b7280;font-size:12px}
 </style></head>
 <body>
   <div class="topbar">
@@ -41,9 +44,13 @@
     <h1>Extrator de Orçamentos</h1>
     <p>Selecione um ou <b>vários</b> PDFs. Cada um vira um orçamento com link curto.</p>
     <label class="drop">
-      <input type="file" id="file" accept="application/pdf" multiple>
-      <div id="dropText">📄 Clique aqui e escolha os PDFs (pode selecionar vários)</div>
+      <input type="file" id="file" accept="application/pdf,image/png,image/jpeg,image/webp" multiple>
+      <div id="dropText">📄 Clique aqui e escolha os arquivos — PDF ou imagem (pode selecionar vários)</div>
     </label>
+    <div class="modo">
+      <label><input type="radio" name="modo" value="cada" checked> Um orçamento por arquivo</label>
+      <label><input type="radio" name="modo" value="juntar"> Juntar os arquivos num orçamento só <span>(ex.: hotel + voo, ou ida + volta)</span></label>
+    </div>
     <button class="btn go" id="go" disabled>Extrair e gerar links</button>
     <div class="status" id="status"></div>
     <div class="res" id="res"></div>
@@ -60,7 +67,7 @@ fileEl.addEventListener('change',()=>{
   dropText.textContent='📄 '+files.length+' arquivo(s) selecionado(s)';
   go.disabled=false;
 });
-function toB64(file){return new Promise(r=>{const rd=new FileReader();rd.onload=()=>r(rd.result.split(',')[1]);rd.readAsDataURL(file);});}
+function toArquivo(file){return new Promise(r=>{const rd=new FileReader();rd.onload=()=>r({data:rd.result.split(',')[1], mime:file.type||'application/pdf'});rd.readAsDataURL(file);});}
 function waLink(url,cliente,tel,destino){
   const dest=(destino||'').trim();
   const linha1 = dest ? `Segue o orçamento para *${dest}*:` : 'Segue o seu orçamento de viagem:';
@@ -82,29 +89,39 @@ function addCard(r){
     res.insertAdjacentHTML('beforeend',`<div class="card fail"><div class="info"><div class="cli">Falhou: ${r.arquivo}</div><div class="meta err">${r.erro}</div></div></div>`);
   }
 }
+async function gerar(arquivos,label){
+  try{
+    const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({arquivos})});
+    const j=await r.json();
+    if(!r.ok){ addCard({ok:false,arquivo:label,erro:j.error||('erro '+r.status)}); return; }
+    let id,codigo;
+    try{ const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})}); if(sr.ok){const s=await sr.json(); id=s.id; codigo=s.codigo;} }catch(e){}
+    let url;
+    if(id) url=location.origin+'/o/'+id;
+    else { const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
+    const cliente=(j.data.cliente&&j.data.cliente.nome)||'';
+    const tel=(j.data.cliente&&j.data.cliente.telefone)||'';
+    const destino=j.data.destinoMensagem||j.data.destinoResumo||'';
+    addCard({ok:true,arquivo:label,cliente,codigo:codigo||(j.data.codigo||''),url,wa:waLink(url,cliente,tel,destino)});
+  }catch(e){ addCard({ok:false,arquivo:label,erro:String(e)}); }
+}
 go.addEventListener('click',async()=>{
   if(!files.length)return;
-  go.disabled=true; res.innerHTML='';
-  let done=0;
-  for(const f of files){
-    done++; statusEl.className='status'; statusEl.textContent=`Processando ${done}/${files.length}: ${f.name}…`;
-    try{
-      const pdfBase64=await toB64(f);
-      const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pdfBase64})});
-      const j=await r.json();
-      if(!r.ok){ addCard({ok:false,arquivo:f.name,erro:j.error||('erro '+r.status)}); continue; }
-      let id,codigo;
-      try{ const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})}); if(sr.ok){const s=await sr.json(); id=s.id; codigo=s.codigo;} }catch(e){}
-      let url;
-      if(id) url=location.origin+'/o/'+id;
-      else { const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
-      const cliente=(j.data.cliente&&j.data.cliente.nome)||'';
-      const tel=(j.data.cliente&&j.data.cliente.telefone)||'';
-      const destino=j.data.destinoMensagem||j.data.destinoResumo||'';
-      addCard({ok:true,arquivo:f.name,cliente,codigo:codigo||(j.data.codigo||''),url,wa:waLink(url,cliente,tel,destino)});
-    }catch(e){ addCard({ok:false,arquivo:f.name,erro:String(e)}); }
+  go.disabled=true; res.innerHTML=''; statusEl.className='status';
+  const modo=(document.querySelector('input[name=modo]:checked')||{}).value||'cada';
+  if(modo==='juntar'){
+    statusEl.textContent=`Lendo e juntando ${files.length} arquivo(s) num orçamento só…`;
+    const arqs=await Promise.all(files.map(toArquivo));
+    await gerar(arqs, files.map(f=>f.name).join(' + '));
+    statusEl.textContent='✔ Concluído — 1 orçamento (arquivos juntados).';
+  }else{
+    let done=0;
+    for(const f of files){
+      done++; statusEl.textContent=`Processando ${done}/${files.length}: ${f.name}…`;
+      const a=await toArquivo(f); await gerar([a], f.name);
+    }
+    statusEl.textContent=`✔ Concluído — ${done} orçamento(s).`;
   }
-  statusEl.textContent=`✔ Concluído — ${done} orçamento(s).`;
   go.disabled=false;
 });
 </script>
