@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extrator de Orçamento · MD Viagens</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#eef1f6;color:#1f2937;margin:0;padding:32px}
+  .box{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e6e9ef;border-radius:14px;padding:26px;box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  h1{color:#16264a;font-size:22px;margin:0 0 4px}
+  p{color:#6b7280;font-size:14px;margin:0 0 18px}
+  .drop{border:2px dashed #c3a063;border-radius:12px;padding:26px;text-align:center;background:#faf6ea;cursor:pointer}
+  .drop input{display:none}
+  .btn{margin-top:16px;background:#16264a;color:#fff;border:none;border-radius:30px;padding:12px 26px;font-size:15px;font-weight:700;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:default}
+  pre{background:#0b1830;color:#d7e2f2;padding:16px;border-radius:10px;overflow:auto;font-size:12.5px;max-height:460px;margin-top:18px;white-space:pre-wrap}
+  .status{margin-top:14px;font-size:14px;color:#16264a;font-weight:600}
+  .err{color:#b42318}
+</style></head>
+<body>
+  <div class="box">
+    <h1>Extrator de Orçamento</h1>
+    <p>Selecione um PDF de orçamento. Ele será lido pela IA e devolvido em dados estruturados — o mesmo formato que alimenta a página do orçamento.</p>
+    <label class="drop">
+      <input type="file" id="file" accept="application/pdf">
+      <div id="dropText">📄 Clique aqui e escolha o PDF do orçamento</div>
+    </label>
+    <button class="btn" id="go" disabled>Extrair dados</button>
+    <div class="status" id="status"></div>
+    <div id="gerar" style="display:none;margin-top:16px">
+      <a class="btn" id="ver" target="_blank" style="background:#1f9d55;text-decoration:none;display:inline-block">Ver orçamento montado ↗</a>
+      <button class="btn" id="copiar" style="background:#c3a063;margin-left:8px">Copiar link</button>
+      <div id="linkbox" style="margin-top:10px;font-size:12px;color:#6b7280;word-break:break-all"></div>
+    </div>
+    <details style="margin-top:16px"><summary style="cursor:pointer;color:#6b7280;font-size:13px">Ver dados extraídos (JSON)</summary>
+      <pre id="out" style="display:none"></pre></details>
+  </div>
+<script>
+const fileEl=document.getElementById('file'), go=document.getElementById('go'),
+      statusEl=document.getElementById('status'), out=document.getElementById('out'),
+      dropText=document.getElementById('dropText');
+let b64=null;
+fileEl.addEventListener('change',()=>{
+  const f=fileEl.files[0]; if(!f)return;
+  dropText.textContent='📄 '+f.name;
+  const rd=new FileReader();
+  rd.onload=()=>{ b64=rd.result.split(',')[1]; go.disabled=false; };
+  rd.readAsDataURL(f);
+});
+go.addEventListener('click',async()=>{
+  if(!b64)return;
+  go.disabled=true; out.style.display='none'; statusEl.className='status';
+  statusEl.textContent='Lendo o PDF com a IA… (pode levar alguns segundos)';
+  try{
+    const r=await fetch('/api/extract',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({pdfBase64:b64})});
+    const j=await r.json();
+    if(!r.ok){ statusEl.className='status err'; statusEl.textContent='Erro: '+(j.error||r.status)+(j.detail?(' — '+j.detail):''); }
+    else{
+      statusEl.textContent='✔ Extração concluída.';
+      out.style.display='block'; out.textContent=JSON.stringify(j.data,null,2);
+      const b64=btoa(unescape(encodeURIComponent(JSON.stringify(j.data))));
+      const url=location.origin+'/orcamento.html#'+b64;
+      document.getElementById('ver').href=url;
+      document.getElementById('linkbox').textContent=url;
+      document.getElementById('gerar').style.display='block';
+      document.getElementById('copiar').onclick=()=>{navigator.clipboard.writeText(url);document.getElementById('copiar').textContent='Copiado!';};
+    }
+  }catch(e){ statusEl.className='status err'; statusEl.textContent='Falha: '+e; }
+  go.disabled=false;
+});
+</script>
+</body></html>
