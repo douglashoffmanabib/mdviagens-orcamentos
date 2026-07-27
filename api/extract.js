@@ -158,10 +158,22 @@ module.exports = async (req, res) => {
 // Enriquecimento: agente fixo, coordenadas dos aeroportos, mapa de voo, capa e resumo.
 function enrich(d) {
   const hotel = d.hotel || {};
-  const voos = Array.isArray(d.voos) ? d.voos : [];
+  let voos = Array.isArray(d.voos) ? d.voos : [];
+
+  // Consolida todos os trechos, ORDENA POR DATA (mais cedo = ida) e corrige o rótulo ida/volta.
+  const parseDMY = (s) => { const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0; };
+  let trechos = [];
+  voos.forEach(v => { if (Array.isArray(v.trechos)) trechos.push(...v.trechos); });
+  if (trechos.length) {
+    trechos.sort((a, b) => parseDMY(a.data) - parseDMY(b.data));
+    trechos.forEach((t, i) => { t.tipo = (i === 0 ? 'ida' : (i === trechos.length - 1 ? 'volta' : (t.tipo || 'ida'))); });
+    const viaj = (voos[0] && voos[0].viajantes) || '';
+    const rota = `${trechos[0].deCidade} → ${trechos[0].paraCidade}`;
+    voos = [{ rota, viajantes: viaj, trechos }];
+  }
 
   // mapa de voo a partir dos trechos
-  const legs = (voos[0] && voos[0].trechos) || [];
+  const legs = trechos;
   const ida = legs.find(t => t.tipo === 'ida');
   const volta = legs.find(t => t.tipo === 'volta');
   const ponto = (iata, cidade) => {
