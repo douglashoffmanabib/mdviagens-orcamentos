@@ -28,6 +28,7 @@
   .contactbar{background:var(--navy);color:#cdd8ea;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;padding:7px 20px;font-size:10px;border-top:1px solid rgba(255,255,255,.12)}
   .contactbar .cb-sep{opacity:.35}
   .contactbar .cb-local{opacity:.92;letter-spacing:.2px}
+  .cb-pdf{background:#c3a063;color:#16264a;border:none;border-radius:14px;padding:4px 12px;font-size:10.5px;font-weight:800;letter-spacing:.5px;cursor:pointer}
   @media(max-width:560px){.contactbar{font-size:9.5px;gap:7px}.contactbar .cb-sep{display:none}.topbar .md{height:66px}}
   .homolog{display:flex;flex-direction:column;align-items:center;gap:3px;line-height:1}
   .homolog img{height:22px}
@@ -173,14 +174,23 @@
   .pay{margin-top:12px;background:#f4f7fb;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px}
   .pay b{color:var(--navy)}
   .note{display:flex;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
-  /* Forma de Investimento */
-  .invest{background:linear-gradient(135deg,#faf6ea,#f3ecd8);border:1px solid #e5d6b0;padding:22px}
-  .invest-main{font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;color:var(--navy);line-height:1.3}
-  .invest-main .plus{color:var(--gold-d);margin:0 4px}
-  .invest-obs{font-size:13px;color:#7a6a45;margin-top:8px}
-  .invest-detalhe{font-size:12.5px;color:#5c5030;margin-top:10px;line-height:1.55;background:rgba(255,255,255,.45);border:1px solid #e5d6b0;border-radius:8px;padding:10px 12px}
-  .invest-detalhe b{color:var(--navy)}
-  .invest-total{font-size:12px;color:var(--muted);margin-top:14px}
+  /* Forma de Investimento — bloco azul */
+  .invest-blue{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:24px;border-radius:14px}
+  .inv-h{font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;margin-bottom:12px}
+  .inv-l{font-size:16px;font-weight:700;margin-bottom:6px}
+  .inv-l span{font-size:12.5px;font-weight:500;opacity:.85}
+  .inv-total{font-size:12px;opacity:.85;margin-top:14px}
+  .inv-total b{font-size:13px}
+  .inv-rodape{font-size:11.5px;opacity:.75;margin-top:8px;font-style:italic}
+  .mod-box{margin-top:16px}
+  .mod-t{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:10px}
+  .mod-btns{display:flex;flex-wrap:wrap;gap:10px}
+  .mod-btn{background:var(--navy);color:#fff;border-radius:24px;padding:11px 18px;font-size:12.5px;font-weight:700;letter-spacing:.4px;text-decoration:none;transition:.2s}
+  .mod-btn:hover{background:var(--navy2)}
+  /* Condições no rodapé */
+  .condicoes{max-width:1000px;margin:0 auto;padding:6px 20px 26px}
+  .condicoes h4{font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+  .condicoes p{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:6px}
   .invest-total b{color:var(--navy);font-size:13px}
 
   /* CONTACT */
@@ -326,15 +336,32 @@ const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
 const bubbles=(n)=>"●".repeat(Math.round(n))+"○".repeat(5-Math.round(n));
 const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function buildInvest(v){
+  const pad=n=>String(n).padStart(2,'0');
   const primeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
-  const main = v.parcelas ? `${v.parcelas}x de ${brl(v.valorParcelaNum)} no cartão` : brl(v.totalNum);
-  return `<div class="card invest">
-    <div class="invest-main">${main}</div>
-    ${v.taxaUnicaNum?`<div class="invest-detalhe">Na <b>1ª fatura</b> virá <b>${brl(primeira)}</b> — a 1ª parcela de ${brl(v.valorParcelaNum)} mais ${brl(v.taxaUnicaNum)} das taxas de embarque, cobradas uma única vez. Nas faturas seguintes, mais <b>${v.parcelas-1}x de ${brl(v.valorParcelaNum)}</b>.</div>`:''}
-    ${v.obsPagamento?`<div class="invest-obs">${v.obsPagamento}</div>`:''}
-    <div class="invest-total">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div>
-    <div class="note">Os preços foram cotados em ${v.cotadoEm}. Estes preços são dinâmicos e podem mudar a qualquer momento, sem aviso prévio.</div>
-    <div class="note">As tarifas deste orçamento são não reembolsáveis e estarão sujeitas a multas e taxas cobradas pelos hotéis e companhias aéreas em caso de alterações ou cancelamentos.</div>
+  let linhas='';
+  if(v.parcelas&&v.valorParcelaNum){
+    if(v.taxaUnicaNum){
+      linhas=`<div class="inv-l">01x ${brl(primeira)} <span>(${brl(v.taxaUnicaNum)} das taxas de embarque + ${brl(v.valorParcelaNum)} da primeira parcela)</span></div>
+              <div class="inv-l">+ ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>`;
+    }else{
+      linhas=`<div class="inv-l">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>`;
+    }
+  }
+  const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
+  return `<div class="card invest-blue">
+    ${v.parcelas?`<div class="inv-h">Pagamento em até ${v.parcelas}X sem juros no cartão.</div>`:''}
+    ${linhas}
+    <div class="inv-total">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div>
+    <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>
+  </div>
+  <div class="mod-box">
+    <div class="mod-t">Quer modificar? Escolha:</div>
+    <div class="mod-btns">
+      <a class="mod-btn" href="${waMod('OUTRA OPÇÃO DE VOO')}" target="_blank">OUTRA OPÇÃO DE VOO</a>
+      <a class="mod-btn" href="${waMod('MUDAR NÚMERO DE DIAS')}" target="_blank">MUDAR NÚMERO DE DIAS</a>
+      <a class="mod-btn" href="${waMod('MODIFICAR HOTEL')}" target="_blank">MODIFICAR HOTEL</a>
+      <a class="mod-btn" href="${waMod('ADICIONAR TRANSFER')}" target="_blank">ADICIONAR TRANSFER</a>
+    </div>
   </div>`;
 }
 
@@ -421,6 +448,8 @@ function render(){
     </a>
     <span class="cb-sep">•</span>
     <span class="cb-local">Atendimento presencial em Sete Lagoas e Belo Horizonte</span>
+    <span class="cb-sep">•</span>
+    <button class="cb-pdf" onclick="baixarPdf()">⬇ BAIXAR PDF</button>
   </div>
   <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
 
@@ -493,6 +522,12 @@ function render(){
       </div></section>
   </div>
 
+  <div class="condicoes">
+    <h4>Condições desta proposta</h4>
+    <p>Os preços foram cotados em ${D.valores.cotadoEm||''}. Estes preços são dinâmicos e podem mudar a qualquer momento, sem aviso prévio.</p>
+    <p>As tarifas deste orçamento são não reembolsáveis e estarão sujeitas a multas e taxas cobradas pelos hotéis e companhias aéreas em caso de alterações ou cancelamentos.</p>
+  </div>
+
   <div class="partners"><div class="lbl">Trabalhamos com os melhores fornecedores</div>
     <div class="row">
       <img src="${LOGOS.rextur}" alt="Rextur Advance">
@@ -502,7 +537,7 @@ function render(){
       <img src="${LOGOS.patria}" alt="Pátria Consolidadora">
     </div></div>
   <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>
-  <button class="pdfbtn" onclick="window.print()">📄 Baixar PDF</button>`;
+  <button class="pdfbtn" onclick="baixarPdf()">📄 Baixar PDF</button>`;
 
   // carousel (só quando há hotel com fotos)
   const track=document.querySelector('#carousel .track');
@@ -601,10 +636,19 @@ function renderVoo(){
     </div>
     <div class="vfoot">MD VIAGENS • Consulte-nos para emissão!</div>
   </div>
-  <button class="pdfbtn" onclick="window.print()">📄 Baixar PDF</button>`;
+  <button class="pdfbtn" onclick="baixarPdf()">📄 Baixar PDF</button>`;
+}
+
+// Baixa o PDF real (gerado no servidor); se não houver id salvo, cai na impressão
+function baixarPdf(){
+  if(D.linkId){ location.href='/api/pdf?id='+encodeURIComponent(D.linkId); }
+  else{ window.print(); }
 }
 
 if(_ENXUTO){ renderVoo(); } else { render(); }
+
+// ?print=1 na URL -> baixa o PDF direto
+if(/[?&]print=1/.test(location.search)){ setTimeout(baixarPdf, 800); }
 
 // Puxa fotos, localização e dados do hotel em tempo real (via seu backend Hotelbeds)
 async function loadHotelbeds(){
