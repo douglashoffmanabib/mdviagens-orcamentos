@@ -28,7 +28,7 @@
   .card .cli{font-weight:700;color:#16264a;font-size:14.5px}
   .card .meta{font-size:12px;color:#6b7280;margin-top:2px}
   .card .cod{font-family:ui-monospace,monospace;font-size:11.5px;color:#a8863f;background:#faf6ea;border:1px solid #e5d6b0;padding:2px 8px;border-radius:6px}
-  .abrir{background:#16264a}.wpp{background:#25D366}.copiar{background:#c3a063}
+  .abrir{background:#16264a}.wpp{background:#25D366}.copiar{background:#c3a063}.pdf{background:#8b1e3f}
   .mini{font-size:12.5px;padding:8px 14px}
   .modo{margin-top:14px;display:flex;flex-direction:column;gap:8px}
   .modo label{font-size:13.5px;color:#26303f;cursor:pointer;display:flex;align-items:center;gap:8px}
@@ -89,6 +89,7 @@ function addCard(r){
       <span class="cod">${r.codigo||''}</span>
       <a class="btn mini abrir" href="${r.url}" target="_blank">Abrir ↗</a>
       <a class="btn mini wpp" href="${r.wa}" target="_blank">WhatsApp</a>
+      <a class="btn mini pdf" href="${r.pdf}" target="_blank">PDF</a>
       <button class="btn mini copiar" onclick="navigator.clipboard.writeText('${r.url}');this.textContent='Copiado!'">Copiar</button>
     </div>`);
   }else{
@@ -106,13 +107,13 @@ async function gerar(arquivos,label){
     if(cn||ct){ j.data.cliente=j.data.cliente||{}; if(cn)j.data.cliente.nome=cn; if(ct)j.data.cliente.telefone=ct; }
     let id,codigo;
     try{ const sr=await fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:j.data})}); if(sr.ok){const s=await sr.json(); id=s.id; codigo=s.codigo;} }catch(e){}
-    let url;
-    if(id) url=location.origin+'/o/'+id;
-    else { const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; }
+    let url,pdf;
+    if(id){ url=location.origin+'/o/'+id; pdf=location.origin+'/api/pdf?id='+encodeURIComponent(id); }
+    else { const b=btoa(unescape(encodeURIComponent(JSON.stringify(j.data)))); url=location.origin+'/orcamento.html#'+b; pdf=location.origin+'/orcamento.html?print=1#'+b; }
     const cliente=(j.data.cliente&&j.data.cliente.nome)||'';
     const tel=(j.data.cliente&&j.data.cliente.telefone)||'';
     const destino=j.data.destinoMensagem||j.data.destinoResumo||'';
-    addCard({ok:true,arquivo:label,cliente,codigo:codigo||(j.data.codigo||''),url,wa:waLink(url,cliente,tel,destino)});
+    addCard({ok:true,arquivo:label,cliente,codigo:codigo||(j.data.codigo||''),url,pdf,wa:waLink(url,cliente,tel,destino)});
   }catch(e){ addCard({ok:false,arquivo:label,erro:String(e)}); }
 }
 go.addEventListener('click',async()=>{
