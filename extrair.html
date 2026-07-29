@@ -84,13 +84,20 @@ function waLink(url,cliente,tel,destino){
 }
 function addCard(r){
   if(r.ok){
+    // Pacote (PCT) = link HTML + PDF opcional | Só voo (AER) ou só hotel (HTL) = PDF é a entrega
+    const soDoc = /^(AER|HTL)/.test(r.codigo||'');
+    const botoes = soDoc
+      ? `<a class="btn mini pdf" href="${r.pdf}">BAIXAR PDF</a>
+         <a class="btn mini wpp" href="${r.wa}" target="_blank">WhatsApp</a>
+         <a class="btn mini abrir" href="${r.url}" target="_blank">Ver online</a>`
+      : `<a class="btn mini abrir" href="${r.url}" target="_blank">Abrir ↗</a>
+         <a class="btn mini wpp" href="${r.wa}" target="_blank">WhatsApp</a>
+         <a class="btn mini pdf" href="${r.pdf}">PDF</a>
+         <button class="btn mini copiar" onclick="navigator.clipboard.writeText('${r.url}');this.textContent='Copiado!'">Copiar</button>`;
     res.insertAdjacentHTML('beforeend',`<div class="card">
-      <div class="info"><div class="cli">${r.cliente||'Orçamento'}</div><div class="meta">${r.arquivo}</div></div>
+      <div class="info"><div class="cli">${r.cliente||'Orçamento'}</div><div class="meta">${r.arquivo}${soDoc?' · entrega em PDF':' · link + PDF'}</div></div>
       <span class="cod">${r.codigo||''}</span>
-      <a class="btn mini abrir" href="${r.url}" target="_blank">Abrir ↗</a>
-      <a class="btn mini wpp" href="${r.wa}" target="_blank">WhatsApp</a>
-      <a class="btn mini pdf" href="${r.pdf}" target="_blank">PDF</a>
-      <button class="btn mini copiar" onclick="navigator.clipboard.writeText('${r.url}');this.textContent='Copiado!'">Copiar</button>
+      ${botoes}
     </div>`);
   }else{
     res.insertAdjacentHTML('beforeend',`<div class="card fail"><div class="info"><div class="cli">Falhou: ${r.arquivo}</div><div class="meta err">${r.erro}</div></div></div>`);

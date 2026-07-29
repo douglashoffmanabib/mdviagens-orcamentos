@@ -68,6 +68,16 @@
   .vcond{margin:2px 0 0;padding-left:18px}.vcond li{font-size:13px;color:#4a5568;margin-bottom:8px;line-height:1.5}
   .vcontact{margin-top:22px;font-size:13.5px;color:#26303f}.vcontact a{color:#16264a;font-weight:700}
   .vfoot{background:#16264a;color:#c3a063;text-align:center;padding:14px;font-weight:700;font-size:14px}
+  .vfotos{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+  .vfotos img{width:100%;height:92px;object-fit:cover;border-radius:8px}
+  .vhotel-nome{font-size:18px;font-weight:800;color:#16264a;margin-top:4px}
+  .vhotel-nome .stars{color:#c3a063;font-size:14px}
+  .vpay{background:linear-gradient(135deg,#16264a,#20345c);color:#fff;border-radius:12px;padding:18px 20px}
+  .vpay-h{font-size:16px;font-weight:800;margin-bottom:8px}
+  .vpay-l{font-size:14px;font-weight:700;margin-bottom:4px}
+  .vpay-l span{font-size:11.5px;font-weight:500;opacity:.85}
+  .vpay-t{font-size:11.5px;opacity:.85;margin-top:10px}
+  @media(max-width:640px){.vfotos{grid-template-columns:1fr 1fr}.vfotos img{height:110px}}
   @media(max-width:640px){.vtable{font-size:11px}.vtable th,.vtable td{padding:6px 5px}.vlogo{width:96px}.vtitle{font-size:22px}}
   .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(22,38,74,.12),rgba(22,38,74,.9))}
   .hero-inner{position:relative;z-index:1;max-width:1000px;margin:0 auto;width:100%;padding:30px 20px}
@@ -327,7 +337,11 @@ const _FOTOS_PADRAO=[
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80"];
 // só-voo (enxuto): sem foto de cidade e sem mapas
-const _ENXUTO = !!(D.voos && D.voos.length) && !(D.hotel && D.hotel.nome);
+const _TEM_VOO = !!(D.voos && D.voos.length && D.voos[0] && D.voos[0].trechos && D.voos[0].trechos.length);
+const _TEM_HOTEL = !!(D.hotel && D.hotel.nome);
+// tipo: 'voo' (só aéreo) | 'hotel' (só hospedagem) | 'pacote' (os dois)
+const _TIPO = (_TEM_VOO && !_TEM_HOTEL) ? 'voo' : ((_TEM_HOTEL && !_TEM_VOO) ? 'hotel' : 'pacote');
+const _ENXUTO = (_TIPO !== 'pacote'); // documento compacto (voo ou hotel)
 if(D.hotel && (!D.hotel.fotos || !D.hotel.fotos.length)) D.hotel.fotos=_FOTOS_PADRAO;
 if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hotel && D.hotel.fotos && D.hotel.fotos[0]) || _FOTOS_PADRAO[2];
 if(D.hotel && !D.hotel.tripadvisor) D.hotel.tripadvisor={nota:null,avaliacoes:null,resenhas:[]};
@@ -645,7 +659,75 @@ function baixarPdf(){
   else{ window.print(); }
 }
 
-if(_ENXUTO){ renderVoo(); } else { render(); }
+// ===== Cotação de Hospedagem (documento) — usada quando é só hotel =====
+function renderHotel(){
+  const h=D.hotel||{}; const v=D.valores||{};
+  const pad=n=>String(n).padStart(2,'0');
+  const fotos=(h.fotos||[]).slice(0,4).map(s=>`<img src="${s}" alt="${h.nome}">`).join('');
+  const q=(h.quartos||[]).map(x=>`<tr><td>${x.nome||''}</td><td>${x.ocupacao||''}</td><td>${x.plano||''}</td><td>${x.restricao||''}</td></tr>`).join('');
+  let pag='';
+  if(v.parcelas&&v.valorParcelaNum){
+    pag = v.taxaUnicaNum
+      ? `<div class="vpay-h">Pagamento em até ${v.parcelas}X sem juros no cartão.</div>
+         <div class="vpay-l">01x ${brl(v.valorParcelaNum+v.taxaUnicaNum)} <span>(${brl(v.taxaUnicaNum)} de taxas + ${brl(v.valorParcelaNum)} da 1ª parcela)</span></div>
+         <div class="vpay-l">+ ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>`
+      : `<div class="vpay-h">Pagamento em até ${v.parcelas}X sem juros no cartão.</div><div class="vpay-l">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>`;
+  }
+  const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
+  document.getElementById('app').innerHTML=`
+  <div class="vpage">
+    <div class="vbar"><span>MD VIAGENS</span><span class="vbar-r">Cotação de Hospedagem</span></div>
+    <div class="vwrap">
+      <div class="vhead">
+        <img class="vlogo" src="${LOGOS.md}" alt="MD Viagens">
+        <div>
+          <h1 class="vtitle">Cotação de Hospedagem</h1>
+          ${D.cliente&&D.cliente.nome?`<div class="vsub">Cliente: <b>${D.cliente.nome}</b></div>`:''}
+          <div class="vsub">${[v.cotadoEm?('Data da cotação: '+v.cotadoEm):'', D.codigo||''].filter(Boolean).join(' &nbsp;•&nbsp; ')}</div>
+        </div>
+      </div>
+      ${fotos?`<div class="vfotos">${fotos}</div>`:''}
+      <h3 class="vsec">Hotel</h3>
+      <div class="vhotel-nome">${h.nome||''} ${h.estrelas?`<span class="stars">${stars(h.estrelas)}</span>`:''}</div>
+      <div class="vsub">${h.endereco||''}</div>
+      <table class="vtable" style="margin-top:12px"><tbody>
+        <tr><th style="text-align:left">Check-in</th><td style="text-align:left">${h.checkin||''}</td><th style="text-align:left">Check-out</th><td style="text-align:left">${h.checkout||''}</td></tr>
+        <tr><th style="text-align:left">Noites</th><td style="text-align:left">${h.noites||''}</td><th style="text-align:left">Avaliação</th><td style="text-align:left">${(h.tripadvisor&&h.tripadvisor.nota)?Number(h.tripadvisor.nota).toFixed(1)+' / 5':'—'}</td></tr>
+      </tbody></table>
+      ${q?`<h3 class="vsec">Acomodação</h3><table class="vtable"><thead><tr><th>Quarto</th><th>Ocupação</th><th>Plano</th><th>Restrições</th></tr></thead><tbody>${q}</tbody></table>`:''}
+      <h3 class="vsec">Forma de Investimento</h3>
+      <div class="vpay">${pag}<div class="vpay-t">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div></div>
+      <div class="mod-box">
+        <div class="mod-t">Quer modificar? Escolha:</div>
+        <div class="mod-btns">
+          <a class="mod-btn" href="${waMod('MODIFICAR HOTEL')}" target="_blank">MODIFICAR HOTEL</a>
+          <a class="mod-btn" href="${waMod('MUDAR NÚMERO DE DIAS')}" target="_blank">MUDAR NÚMERO DE DIAS</a>
+          <a class="mod-btn" href="${waMod('ADICIONAR VOO')}" target="_blank">ADICIONAR VOO</a>
+          <a class="mod-btn" href="${waMod('ADICIONAR TRANSFER')}" target="_blank">ADICIONAR TRANSFER</a>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:18px">
+        <a class="btn" href="https://wa.me/${D.agente.whatsapp}?text=${encodeURIComponent(`Olá! Quero fechar o orçamento ${D.codigo||''}!`)}" target="_blank">Falar no WhatsApp e fechar</a>
+      </div>
+      <h3 class="vsec">Condições</h3>
+      <ul class="vcond">
+        <li>Os preços foram cotados em ${v.cotadoEm||''}. Estes preços são dinâmicos e podem mudar a qualquer momento, sem aviso prévio.</li>
+        <li>As tarifas deste orçamento são não reembolsáveis e estarão sujeitas a multas e taxas cobradas pelos hotéis em caso de alterações ou cancelamentos.</li>
+      </ul>
+      <div class="vcontact">Fale com <b>${D.agente.nome}</b> · ${D.agente.telefone} · <a href="https://wa.me/${D.agente.whatsapp}" target="_blank">WhatsApp</a></div>
+    </div>
+    <div class="vfoot">MD VIAGENS • Consulte-nos para reserva!</div>
+  </div>
+  <button class="pdfbtn" onclick="baixarPdf()">Baixar PDF</button>`;
+}
+
+// roteador único: mantém o layout certo mesmo após carregar fotos/mapas
+function renderAll(){
+  if(_TIPO==='voo') renderVoo();
+  else if(_TIPO==='hotel') renderHotel();
+  else render();
+}
+renderAll();
 
 // ?print=1 na URL -> baixa o PDF direto
 if(/[?&]print=1/.test(location.search)){ setTimeout(baixarPdf, 800); }
@@ -663,7 +745,7 @@ async function loadHotelbeds(){
     if(d.coordinates&&d.coordinates.lat)D.hotel.geo={lat:+d.coordinates.lat,lon:+d.coordinates.lon};
     if(d.images&&d.images.length)D.hero.imagem=d.images[0]; // capa = foto principal real do destino
     D.hotel.fotosFonte="Fotos e localização em tempo real · Hotelbeds Content API";
-    render();
+    renderAll();
   }catch(e){console.warn('Hotelbeds:',e);}
 }
 loadHotelbeds();
@@ -685,7 +767,7 @@ async function loadHotelInfo(){
     if(d.reviewsCount)D.hotel.tripadvisor.avaliacoes=d.reviewsCount;
     if(d.reviews&&d.reviews.length)D.hotel.tripadvisor.resenhas=d.reviews;
     if(d.photoRefs&&d.photoRefs.length)D.hotel.fotosFonte="Fotos, avaliações e localização reais do hotel";
-    render();
+    renderAll();
   }catch(e){console.warn('hotel-photos:',e);}
 }
 loadHotelInfo();
