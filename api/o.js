@@ -31,8 +31,9 @@ module.exports = async (req, res) => {
       return res.status(404).send('<h2 style="font-family:sans-serif">Orçamento não encontrado.</h2>');
     }
     const b64 = Buffer.from(val, 'utf8').toString('base64');
-    // redireciona para a página montada, com os dados no hash
-    res.writeHead(302, { Location: '/orcamento.html#' + b64 });
+    // redireciona para a página montada, levando o id (para o botão Baixar PDF) e o ?print=1
+    const q = '?id=' + encodeURIComponent(id) + (req.query.print ? '&print=1' : '');
+    res.writeHead(302, { Location: '/orcamento.html' + q + '#' + b64 });
     res.end();
   } catch (e) {
     return res.status(500).send('Erro: ' + String(e).slice(0, 200));

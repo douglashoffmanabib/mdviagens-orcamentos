@@ -96,6 +96,11 @@ module.exports = async (req, res) => {
   const iatas = [...new Set(trechosAll.map(t => t.iata).filter(Boolean))];
   iatas.forEach(c => { jobs['logo_' + c] = fetchBytes(`https://pics.avs.io/120/40/${c}.png`, 5000); });
 
+  // logos da marca e parceiros (servidos pela pasta /img do próprio site)
+  jobs.logoMd = fetchBytes(host + '/img/logo-md.jpg', 5000);
+  jobs.cadastur = fetchBytes(host + '/img/cadastur.png', 5000);
+  ['rextur', 'cvc', 'flytour', 'sakura', 'patria'].forEach(k => { jobs[k] = fetchBytes(host + '/img/' + k + '.png', 5000); });
+
   jobs.done = Promise.resolve();
   const assets = {};
   await Promise.all(Object.keys(jobs).map(async k => { assets[k] = await jobs[k]; }));
@@ -159,11 +164,13 @@ module.exports = async (req, res) => {
 
     const titulo = soVoo ? 'Cotação de Voos' : 'Cotação de Viagem';
 
-    // ===== faixa topo =====
-    page.drawRectangle({ x: 0, y: y - 42, width: W, height: 42, color: NAVY });
-    txt('MD VIAGENS', ML, y - 27, 13, B, rgb(1, 1, 1));
-    txt(titulo, W - MR - B.widthOfTextAtSize(titulo, 11), y - 26, 11, B, GOLD);
-    y -= 42;
+    // ===== faixa topo (com a logo da MD) =====
+    const logoMd = await embed(assets.logoMd);
+    page.drawRectangle({ x: 0, y: y - 56, width: W, height: 56, color: NAVY });
+    if (logoMd) { const lh = 44, lw = lh * (logoMd.width / logoMd.height); page.drawImage(logoMd, { x: ML, y: y - 50, width: lw, height: lh }); }
+    else txt('MD VIAGENS', ML, y - 34, 13, B, rgb(1, 1, 1));
+    txt(titulo, W - MR - B.widthOfTextAtSize(titulo, 11), y - 33, 11, B, GOLD);
+    y -= 56;
 
     // ===== foto do destino =====
     const cityImg = await embed(assets.city);
@@ -317,10 +324,24 @@ module.exports = async (req, res) => {
     const ag = d.agente || {};
     txt(`${ag.nome || 'Gabriela Aquino'}  ·  ${ag.telefone || '(31) 98365-1769'}  ·  ${ag.email || 'gabriela@mdviagens.com'}`, ML, y, 9.5, B, NAVY);
 
-    // rodapé na última página
+    // rodapé na última página: parceiros + faixa navy com Cadastur
+    if (y < 110) newPage();
+    const pImgs = [];
+    for (const k of ['rextur', 'cvc', 'flytour', 'sakura', 'patria']) { const im = await embed(assets[k]); if (im) pImgs.push(im); }
+    if (pImgs.length) {
+      const cap = 'Trabalhamos com os melhores fornecedores';
+      txt(cap, (W - H.widthOfTextAtSize(cap, 7.5)) / 2, 66, 7.5, H, MUTED);
+      const lh = 15, gap = 20;
+      const widths = pImgs.map(im => lh * (im.width / im.height));
+      const tot = widths.reduce((a, b) => a + b, 0) + gap * (pImgs.length - 1);
+      let px = (W - tot) / 2;
+      pImgs.forEach((im, i) => { page.drawImage(im, { x: px, y: 42, width: widths[i], height: lh }); px += widths[i] + gap; });
+    }
     page.drawRectangle({ x: 0, y: 0, width: W, height: 30, color: NAVY });
-    const foot = 'MD VIAGENS  •  Agência homologada Cadastur  •  Atendimento em Sete Lagoas e Belo Horizonte';
-    txt(foot, (W - B.widthOfTextAtSize(foot, 8.5)) / 2, 11, 8.5, B, GOLD);
+    const foot = 'MD VIAGENS  •  Atendimento em Sete Lagoas e Belo Horizonte';
+    txt(foot, ML, 11, 8.5, B, GOLD);
+    const cad = await embed(assets.cadastur);
+    if (cad) { const ch = 13, cw2 = ch * (cad.width / cad.height); page.drawImage(cad, { x: W - MR - cw2, y: 8.5, width: cw2, height: ch }); }
 
     const bytes = await pdf.save();
     const nome = ('orcamento-' + (d.codigo || id) + '.pdf').toLowerCase();
