@@ -638,9 +638,10 @@ function renderVoo(){
   <button class="pdfbtn" onclick="baixarPdf()">📄 Baixar PDF</button>`;
 }
 
-// Baixa o PDF real (gerado no servidor); se não houver id salvo, cai na impressão
+// Baixa o PDF real (gerado no servidor); pega o id dos dados ou da própria URL
 function baixarPdf(){
-  if(D.linkId){ location.href='/api/pdf?id='+encodeURIComponent(D.linkId); }
+  const pid=D.linkId || new URLSearchParams(location.search).get('id');
+  if(pid){ location.href='/api/pdf?id='+encodeURIComponent(pid); }
   else{ window.print(); }
 }
 
