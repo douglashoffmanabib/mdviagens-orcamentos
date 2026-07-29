@@ -35,8 +35,11 @@ Extraia fielmente o que estiver no documento. Use null quando não houver a info
 Formato exato do JSON:
 {
   "numero": "string (número do orçamento, ex: 4383884)",
-  "cliente": { "nome": "string (nome do cliente/passageiro do título)" },
+  "cliente": { "nome": "string (nome do cliente/passageiro do título)", "telefone": "telefone do cliente se aparecer no documento (ex: (31) 99999-9999), senão null" },
   "destinoResumo": "string (cidade/UF principal do destino)",
+  "pais": "país do destino (ex.: Brasil, Colômbia, Portugal)",
+  "destinoBusca": "termo curto (2-3 palavras) de UM ÚNICO lugar para buscar uma FOTO turística no banco de imagens. REGRAS: (a) viagem para UMA cidade -> use a cidade + o traço icônico, ex.: 'Porto Seguro praia', 'Gramado inverno', 'Foz do Iguaçu cataratas'; (b) viagem por VÁRIAS cidades no EXTERIOR -> use o PAÍS, ex.: 'Colômbia paisagem', 'Portugal paisagem'; (c) viagem por VÁRIAS cidades no BRASIL -> use a cidade principal ou a região, ex.: 'Bahia praia', 'Serra Gaúcha'. NUNCA junte duas cidades no mesmo termo.",
+  "destinoMensagem": "nome do destino para a mensagem de WhatsApp: a CIDADE quando for no Brasil; o PAÍS quando for fora do Brasil (ex.: 'Porto Seguro', 'Gramado', 'Colômbia', 'Portugal')",
   "voos": [
     {
       "rota": "Cidade origem → Cidade destino",
@@ -49,6 +52,7 @@ Formato exato do JSON:
           "para": "IATA destino", "paraCidade": "cidade destino",
           "cia": "nome da companhia (ex: LATAM, GOL, AZUL)",
           "iata": "código IATA da companhia (LATAM=LA, GOL=G3, AZUL=AD, AVIANCA=AV)",
+          "voo": "número do voo se aparecer (ex: G3 1137), senão null",
           "saida": "HH:MM", "chegada": "HH:MM", "dur": "ex: 4h15",
           "classe": "ex: Econômica",
           "conexao": "texto da conexão, ou 'Voo direto'",
@@ -57,13 +61,16 @@ Formato exato do JSON:
       ]
     }
   ],
-  "hotel": {
-    "nome": "string", "estrelas": número(1-5),
-    "endereco": "string completo",
-    "checkin": "DD/MM", "checkout": "DD/MM", "noites": número,
-    "quartos": [ { "nome": "ex: Standard", "ocupacao": "ex: 2 adultos", "plano": "ex: All Inclusive", "restricao": "ex: Reembolsável até 7 dias antes", "reembolsavel": true|false } ],
-    "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
-  },
+  "hoteis": [
+    {
+      "cidade": "cidade do hotel (importante em roteiros com mais de um hotel)",
+      "nome": "string", "estrelas": número(1-5),
+      "endereco": "string completo",
+      "checkin": "DD/MM", "checkout": "DD/MM", "noites": número,
+      "quartos": [ { "nome": "ex: Standard", "ocupacao": "ex: 2 adultos", "plano": "ex: All Inclusive", "restricao": "ex: Reembolsável até 7 dias antes", "reembolsavel": true|false } ],
+      "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
+    }
+  ],
   "transfer": null,
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
   "valores": {
@@ -76,6 +83,7 @@ Formato exato do JSON:
 }
 
 Regras:
+- "hoteis" é SEMPRE uma lista. Se a viagem tiver MAIS DE UM hotel (roteiros por várias cidades), inclua TODOS, um item por hotel, na ordem cronológica, preenchendo "cidade". Se não houver hotel, use [].
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
@@ -93,10 +101,29 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
-  const pdfBase64 = body && body.pdfBase64;
-  if (!pdfBase64) return res.status(400).json({ error: 'Envie { pdfBase64 } no corpo da requisição.' });
+  // aceita PDF e imagens. Formatos possíveis do corpo:
+  //   { arquivos: [ { data:<base64>, mime:"application/pdf"|"image/png"|... }, ... ] }
+  //   { pdfBase64List: [...] }  ou  { pdfBase64: "..." }  (compatibilidade)
+  let arquivos = [];
+  if (Array.isArray(body && body.arquivos)) arquivos = body.arquivos;
+  else if (Array.isArray(body && body.pdfBase64List)) arquivos = body.pdfBase64List.map(d => ({ data: d, mime: 'application/pdf' }));
+  else if (body && body.pdfBase64) arquivos = [{ data: body.pdfBase64, mime: 'application/pdf' }];
+  arquivos = arquivos.filter(a => a && a.data);
+  if (!arquivos.length) return res.status(400).json({ error: 'Envie { arquivos } (PDF ou imagem).' });
 
   const model = process.env.EXTRACT_MODEL || 'claude-sonnet-5';
+
+  const content = arquivos.map(a => {
+    const mime = a.mime || 'application/pdf';
+    if (mime.indexOf('image/') === 0) {
+      return { type: 'image', source: { type: 'base64', media_type: mime, data: a.data } };
+    }
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } };
+  });
+  const merge = arquivos.length > 1
+    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, seguro, etc. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente.'
+    : '';
+  content.push({ type: 'text', text: SCHEMA_PROMPT + merge });
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -109,13 +136,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model,
         max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
-            { type: 'text', text: SCHEMA_PROMPT }
-          ]
-        }]
+        messages: [{ role: 'user', content }]
       })
     });
 
@@ -142,11 +163,33 @@ module.exports = async (req, res) => {
 
 // Enriquecimento: agente fixo, coordenadas dos aeroportos, mapa de voo, capa e resumo.
 function enrich(d) {
-  const hotel = d.hotel || {};
-  const voos = Array.isArray(d.voos) ? d.voos : [];
+  // hotéis: aceita lista (vários) ou objeto único (compatibilidade)
+  let hoteis = Array.isArray(d.hoteis) ? d.hoteis.filter(h => h && h.nome)
+             : (d.hotel && d.hotel.nome ? [d.hotel] : []);
+  hoteis = hoteis.map(h => ({
+    ...h,
+    geo: null,                 // preenchido depois (Google Places) ou geocodificado
+    fotos: [],                 // preenchidas pela API na página
+    fotosFonte: 'Fotos reais do hotel',
+    quartos: (h.quartos || []).map(q => ({ ...q, cor: q.reembolsavel ? 'green' : 'orange' }))
+  }));
+  const hotel = hoteis[0] || {};
+  let voos = Array.isArray(d.voos) ? d.voos : [];
+
+  // Consolida todos os trechos, ORDENA POR DATA (mais cedo = ida) e corrige o rótulo ida/volta.
+  const parseDMY = (s) => { const m = /(\d{2})\/(\d{2})\/(\d{4})/.exec(s || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : 0; };
+  let trechos = [];
+  voos.forEach(v => { if (Array.isArray(v.trechos)) trechos.push(...v.trechos); });
+  if (trechos.length) {
+    trechos.sort((a, b) => parseDMY(a.data) - parseDMY(b.data));
+    trechos.forEach((t, i) => { t.tipo = (i === 0 ? 'ida' : (i === trechos.length - 1 ? 'volta' : (t.tipo || 'ida'))); });
+    const viaj = (voos[0] && voos[0].viajantes) || '';
+    const rota = `${trechos[0].deCidade} → ${trechos[0].paraCidade}`;
+    voos = [{ rota, viajantes: viaj, trechos }];
+  }
 
   // mapa de voo a partir dos trechos
-  const legs = (voos[0] && voos[0].trechos) || [];
+  const legs = trechos;
   const ida = legs.find(t => t.tipo === 'ida');
   const volta = legs.find(t => t.tipo === 'volta');
   const ponto = (iata, cidade) => {
@@ -159,14 +202,13 @@ function enrich(d) {
     volta: volta ? { rota: `${volta.deCidade} → ${volta.paraCidade}`, pontos: buildRoute(volta) } : null
   };
 
-  // restrição -> cor do selo
-  (hotel.quartos || []).forEach(q => { q.cor = q.reembolsavel ? 'green' : 'orange'; });
-
+  const noitesTotal = hoteis.reduce((a, h) => a + (parseInt(h.noites, 10) || 0), 0);
   const chips = [];
   if (ida && volta) chips.push(`📅 ${ida.data} → ${volta.data}`);
-  if (hotel.noites) chips.push(`🌙 ${hotel.noites} noites`);
+  if (noitesTotal) chips.push(`🌙 ${noitesTotal} noites`);
+  if (hoteis.length > 1) chips.push(`🏨 ${hoteis.length} hotéis`);
   if (voos[0] && voos[0].viajantes) chips.push(`👥 ${voos[0].viajantes}`);
-  if ((hotel.quartos || []).some(q => /all inclusive|tudo incluso/i.test(q.plano || ''))) chips.push('🍽️ All Inclusive');
+  if (hoteis.some(h => (h.quartos || []).some(q => /all inclusive|tudo incluso/i.test(q.plano || '')))) chips.push('🍽️ All Inclusive');
 
   const hoje = new Date().toLocaleDateString('pt-BR');
 
@@ -175,6 +217,10 @@ function enrich(d) {
     agencia: { nome: 'MD Viagens · Milhas e Destinos' },
     agente: AGENTE_FIXO,
     cliente: d.cliente || { nome: '' },
+    destinoResumo: d.destinoResumo || '',
+    pais: d.pais || '',
+    destinoBusca: d.destinoBusca || d.destinoResumo || '',
+    destinoMensagem: d.destinoMensagem || (d.destinoResumo || '').split(',')[0].trim(),
     hero: {
       imagem: '', // preenchida depois pela foto do hotel (Hotelbeds) ou capa do destino
       eyebrow: `Orçamento Nº ${d.numero || ''}`,
@@ -184,12 +230,13 @@ function enrich(d) {
     },
     resumo: [
       { k: 'Destino', v: d.destinoResumo || '' },
-      { k: 'Período', v: hotel.checkin && hotel.checkout ? `${hotel.checkin}–${hotel.checkout}` : '' },
+      { k: 'Período', v: hoteis.length ? `${hoteis[0].checkin || ''}–${hoteis[hoteis.length - 1].checkout || ''}` : (ida && volta ? `${ida.data}–${volta.data}` : '') },
       { k: 'Viajantes', v: (voos[0] && voos[0].viajantes) || '' },
-      { k: 'Noites', v: hotel.noites || '' }
+      { k: hoteis.length > 1 ? 'Hotéis' : 'Noites', v: hoteis.length > 1 ? `${hoteis.length} · ${noitesTotal} noites` : (noitesTotal || '') }
     ],
     mapaVoo,
     voos,
+    hoteis,                 // lista completa (1 ou vários hotéis)
     hotel: {
       ...hotel,
       geo: null, // sem coord no PDF -> o template geocodifica pelo endereço; com Hotelbeds vem exata
