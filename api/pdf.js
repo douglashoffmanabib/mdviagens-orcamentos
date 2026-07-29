@@ -117,7 +117,9 @@ module.exports = async (req, res) => {
       if (!buf) return null;
       try { return await pdf.embedJpg(buf); } catch (e) { try { return await pdf.embedPng(buf); } catch (e2) { return null; } }
     };
-    const txt = (s, x, yy, size, font, color) => page.drawText(String(s || ''), { x, y: yy, size, font, color: color || INK });
+    // remove emojis/símbolos fora do alfabeto latino (a fonte padrão do PDF não os suporta)
+    const clean = (s) => String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{2600}-\u{26FF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+    const txt = (s, x, yy, size, font, color) => page.drawText(clean(s), { x, y: yy, size, font, color: color || INK });
     const wrap = (s, size, font, maxw) => {
       const words = String(s || '').split(/\s+/); const lines = []; let cur = '';
       words.forEach(w => { const t = cur ? cur + ' ' + w : w;
@@ -231,7 +233,7 @@ module.exports = async (req, res) => {
     if (d.hotel && d.hotel.nome) {
       secTitle('Hospedagem');
       ensure(40);
-      txt(d.hotel.nome + (d.hotel.estrelas ? '  ' + '★'.repeat(d.hotel.estrelas) : ''), ML, y, 12.5, B, INK); y -= 14;
+      txt(d.hotel.nome + (d.hotel.estrelas ? `  ·  ${d.hotel.estrelas} estrelas` : ''), ML, y, 12.5, B, INK); y -= 14;
       if (d.hotel.endereco) { txt(wrap(d.hotel.endereco, 9, H, CW)[0], ML, y, 9, H, MUTED); y -= 12; }
       const per = [d.hotel.checkin && d.hotel.checkout ? `Período: ${d.hotel.checkin} a ${d.hotel.checkout}` : '', d.hotel.noites ? `${d.hotel.noites} noites` : ''].filter(Boolean).join('   •   ');
       if (per) { txt(per, ML, y, 9.5, H, INK); y -= 13; }
