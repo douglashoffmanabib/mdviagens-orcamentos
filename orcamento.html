@@ -338,14 +338,21 @@ const _FOTOS_PADRAO=[
   "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1200&q=80"];
 // só-voo (enxuto): sem foto de cidade e sem mapas
 const _TEM_VOO = !!(D.voos && D.voos.length && D.voos[0] && D.voos[0].trechos && D.voos[0].trechos.length);
-const _TEM_HOTEL = !!(D.hotel && D.hotel.nome);
+// hotéis: lista (vários) ou objeto único (compatibilidade com orçamentos antigos)
+D.hoteis = (Array.isArray(D.hoteis) && D.hoteis.length) ? D.hoteis.filter(h=>h&&h.nome)
+         : ((D.hotel && D.hotel.nome) ? [D.hotel] : []);
+if(D.hoteis.length) D.hotel = D.hoteis[0];
+const _TEM_HOTEL = D.hoteis.length > 0;
 // tipo: 'voo' (só aéreo) | 'hotel' (só hospedagem) | 'pacote' (os dois)
 const _TIPO = (_TEM_VOO && !_TEM_HOTEL) ? 'voo' : ((_TEM_HOTEL && !_TEM_VOO) ? 'hotel' : 'pacote');
 const _ENXUTO = (_TIPO !== 'pacote'); // documento compacto (voo ou hotel)
-if(D.hotel && (!D.hotel.fotos || !D.hotel.fotos.length)) D.hotel.fotos=_FOTOS_PADRAO;
-if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hotel && D.hotel.fotos && D.hotel.fotos[0]) || _FOTOS_PADRAO[2];
-if(D.hotel && !D.hotel.tripadvisor) D.hotel.tripadvisor={nota:null,avaliacoes:null,resenhas:[]};
-if(D.hotel && D.hotel.tripadvisor && !D.hotel.tripadvisor.resenhas) D.hotel.tripadvisor.resenhas=[];
+D.hoteis.forEach(h=>{
+  if(!h.fotos || !h.fotos.length) h.fotos=_FOTOS_PADRAO;
+  if(!h.tripadvisor) h.tripadvisor={nota:null,avaliacoes:null,resenhas:[]};
+  if(!h.tripadvisor.resenhas) h.tripadvisor.resenhas=[];
+  if(!h.quartos) h.quartos=[];
+});
+if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hoteis[0]&&D.hoteis[0].fotos&&D.hoteis[0].fotos[0]) || _FOTOS_PADRAO[2];
 const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
 const bubbles=(n)=>"●".repeat(Math.round(n))+"○".repeat(5-Math.round(n));
 const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -399,8 +406,9 @@ function buildFlights(list){
   }).join("");
 }
 
-function buildHotel(h){
+function buildHotel(h, idx){
   if(!h||!h.nome) return '';
+  idx = idx||0;
   h.fotos=h.fotos||[]; h.quartos=h.quartos||[];
   const slides=h.fotos.map(s=>`<img src="${s}" alt="${h.nome}">`).join("");
   const dots=h.fotos.map((_,i)=>`<i class="${i===0?'on':''}" data-i="${i}"></i>`).join("");
@@ -413,9 +421,10 @@ function buildHotel(h){
         <span class="cnt">${ta.avaliacoes?Number(ta.avaliacoes).toLocaleString('pt-BR')+' avaliações':'avaliações'}</span></div>
     </div>` : '';
   return `<div class="card">
-    <div class="carousel" id="carousel">
+    ${h.cidade?`<div class="fl-top"><b>${h.cidade}</b>${h.checkin&&h.checkout?` · ${h.checkin} a ${h.checkout}`:''}${h.noites?` · ${h.noites} noites`:''}</div>`:''}
+    <div class="carousel" id="carousel${idx}" data-idx="${idx}">
       <div class="track">${slides}</div>
-      <button class="prev" onclick="slide(-1)">‹</button><button class="next" onclick="slide(1)">›</button>
+      <button class="prev" onclick="slide(-1,${idx})">‹</button><button class="next" onclick="slide(1,${idx})">›</button>
       <div class="dots">${dots}</div>
     </div>
     <div class="src-note">📷 ${h.fotosFonte}</div>
@@ -479,7 +488,7 @@ function render(){
 
     ${temVoos?`<section id="voos"><div class="sec-head"><span class="ic">✈️</span><h2>Voos</h2></div>${buildFlights(D.voos)}</section>`:''}
 
-    ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem</h2></div>${buildHotel(D.hotel)}</section>`:''}
+    ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem${D.hoteis.length>1?` · ${D.hoteis.length} hotéis`:''}</h2></div>${D.hoteis.map((h,i)=>buildHotel(h,i)).join('')}</section>`:''}
 
     ${!enxuto?`<section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
       ${D.transfer
@@ -498,7 +507,7 @@ function render(){
         <div class="card mini"><div class="cap">🛫 Ida · ${D.mapaVoo.ida.rota}</div><div id="mapIda" class="minimap"></div></div>
         ${D.mapaVoo.volta?`<div class="card mini"><div class="cap">🛬 Volta · ${D.mapaVoo.volta.rota}</div><div id="mapVolta" class="minimap"></div></div>`:''}
       </div>`:''}
-      ${temHotel?`<div class="card map-card" style="padding-bottom:0"><div class="cap" style="padding-bottom:8px">📍 Localização do hotel · ${D.hotel.nome}</div><div id="hotelmap"></div></div>`:''}
+      ${temHotel?`<div class="map-split ${D.hoteis.length>1?'two':'one'}">${D.hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`:''}
     </section>`:''}
 
     <section id="valores"><div class="sec-head"><span class="ic">💳</span><h2>Forma de Investimento</h2></div>
@@ -552,15 +561,25 @@ function render(){
     </div></div>
   <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>`;
 
-  // carousel (só quando há hotel com fotos)
-  const track=document.querySelector('#carousel .track');
-  if(track){
-    window._ci=0;const dots=[...document.querySelectorAll('#carousel .dots i')];
-    const n=((D.hotel&&D.hotel.fotos)||[]).length||1;
-    window.slide=(d)=>{window._ci=(window._ci+d+n)%n;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((x,i)=>x.classList.toggle('on',i===window._ci));};
-    dots.forEach(x=>x.addEventListener('click',()=>{window._ci=+x.dataset.i;track.style.transform=`translateX(-${window._ci*100}%)`;dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci));}));
-    if(n>1) setInterval(()=>window.slide(1),5000);
-  }
+  // carrossel: um por hotel
+  window._ci={};
+  window.slide=(dir,idx)=>{
+    const car=document.getElementById('carousel'+(idx||0)); if(!car)return;
+    const tr=car.querySelector('.track'), dots=[...car.querySelectorAll('.dots i')], n=dots.length||1;
+    window._ci[idx]=((window._ci[idx]||0)+dir+n)%n;
+    tr.style.transform=`translateX(-${window._ci[idx]*100}%)`;
+    dots.forEach((x,i)=>x.classList.toggle('on',i===window._ci[idx]));
+  };
+  document.querySelectorAll('.carousel').forEach(car=>{
+    const idx=+car.dataset.idx||0; window._ci[idx]=0;
+    const dots=[...car.querySelectorAll('.dots i')];
+    dots.forEach(x=>x.addEventListener('click',()=>{
+      window._ci[idx]=+x.dataset.i;
+      car.querySelector('.track').style.transform=`translateX(-${window._ci[idx]*100}%)`;
+      dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci[idx]));
+    }));
+    if(dots.length>1) setInterval(()=>window.slide(1,idx),5000);
+  });
 
   // leaflet maps (rota ida/volta + localização do hotel) com mapa real
   function initMaps(){
@@ -577,23 +596,19 @@ function render(){
     if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
     if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#a8863f');
 
-    // Localização real do hotel (só se houver a seção do mapa do hotel)
-    if(!document.getElementById('hotelmap') || !D.hotel) return;
-    function showHotel(lat,lon){
-      const hm=L.map('hotelmap',{scrollWheelZoom:false}).setView([lat,lon],15);
-      OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(D.hotel.nome).openPopup();
-    }
-    const g=D.hotel.geo;
-    if(g && g.lat && g.lon){ showHotel(g.lat,g.lon); }
-    else{
-      const el=document.getElementById('hotelmap');
+    // Localização real de cada hotel
+    D.hoteis.forEach((h,i)=>{
+      const el=document.getElementById('hotelmap'+i); if(!el)return;
+      const show=(lat,lon)=>{ const hm=L.map('hotelmap'+i,{scrollWheelZoom:false}).setView([lat,lon],15);
+        OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(h.nome).openPopup(); };
+      const g=h.geo;
+      if(g && g.lat && g.lon){ show(g.lat,g.lon); return; }
       el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localizando o hotel…</div>';
-      const q=encodeURIComponent(`${D.hotel.nome}, ${D.hotel.endereco}`);
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${q}`)
-        .then(r=>r.json()).then(a=>{ if(a&&a[0]){ el.innerHTML=''; showHotel(+a[0].lat,+a[0].lon); }
-          else{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localização indisponível para este endereço.</div>'; } })
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent((h.nome||'')+', '+(h.endereco||''))}`)
+        .then(r=>r.json()).then(a=>{ if(a&&a[0]){ el.innerHTML=''; show(+a[0].lat,+a[0].lon); }
+          else{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localização indisponível.</div>'; } })
         .catch(()=>{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível carregar o mapa.</div>'; });
-    }
+    });
   }
   if(window.L){initMaps();}else{window.addEventListener('load',initMaps);}
 
@@ -752,23 +767,27 @@ loadHotelbeds();
 
 // Fotos, localização e avaliações REAIS do hotel a partir do NOME (via Google Places no seu backend).
 async function loadHotelInfo(){
-  if(!D.hotel||!D.hotel.nome)return;
-  try{
-    const q=encodeURIComponent(`${D.hotel.nome} ${D.hotel.endereco||''}`);
-    const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,''); // usa sempre o próprio backend
-    const r=await fetch(base+'/api/hotel-photos?q='+q);
-    if(!r.ok)return; const d=await r.json();
-    if(d.photoRefs&&d.photoRefs.length){
-      D.hotel.fotos=d.photoRefs.map(ref=>base+'/api/place-photo?ref='+encodeURIComponent(ref));
-    }
-    if(d.coordinates&&d.coordinates.lat)D.hotel.geo={lat:+d.coordinates.lat,lon:+d.coordinates.lon};
-    D.hotel.tripadvisor=D.hotel.tripadvisor||{};
-    if(d.rating)D.hotel.tripadvisor.nota=d.rating;
-    if(d.reviewsCount)D.hotel.tripadvisor.avaliacoes=d.reviewsCount;
-    if(d.reviews&&d.reviews.length)D.hotel.tripadvisor.resenhas=d.reviews;
-    if(d.photoRefs&&d.photoRefs.length)D.hotel.fotosFonte="Fotos, avaliações e localização reais do hotel";
-    renderAll();
-  }catch(e){console.warn('hotel-photos:',e);}
+  if(!D.hoteis || !D.hoteis.length) return;
+  const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,''); // usa sempre o próprio backend
+  await Promise.all(D.hoteis.map(async h=>{
+    if(!h.nome) return;
+    try{
+      const q=encodeURIComponent(`${h.nome} ${h.endereco||''}`);
+      const r=await fetch(base+'/api/hotel-photos?q='+q);
+      if(!r.ok)return; const d=await r.json();
+      if(d.photoRefs&&d.photoRefs.length){
+        h.fotos=d.photoRefs.map(ref=>base+'/api/place-photo?ref='+encodeURIComponent(ref));
+        h.fotosFonte="Fotos, avaliações e localização reais do hotel";
+      }
+      if(d.coordinates&&d.coordinates.lat)h.geo={lat:+d.coordinates.lat,lon:+d.coordinates.lon};
+      h.tripadvisor=h.tripadvisor||{};
+      if(d.rating)h.tripadvisor.nota=d.rating;
+      if(d.reviewsCount)h.tripadvisor.avaliacoes=d.reviewsCount;
+      if(d.reviews&&d.reviews.length)h.tripadvisor.resenhas=d.reviews;
+    }catch(e){console.warn('hotel-photos:',e);}
+  }));
+  D.hotel=D.hoteis[0];
+  renderAll();
 }
 loadHotelInfo();
 
