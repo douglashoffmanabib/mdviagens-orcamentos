@@ -1,7 +1,10 @@
 {
-  "name": "md-orcamentos-hotelbeds",
+  "name": "md-orcamentos",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend que conecta o orçamento dinâmico da MD Viagens à Content API do Hotelbeds/HBX.",
-  "engines": { "node": ">=18" }
+  "description": "Orçamentos dinâmicos da MD Viagens (extração por IA, links curtos, PDF).",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
 }
