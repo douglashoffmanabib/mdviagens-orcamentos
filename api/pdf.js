@@ -1,6 +1,5 @@
-// PDF rico do orçamento: foto do destino, fotos do hotel, mapas, seções e botões clicáveis.
+// PDF rico do orçamento: foto do destino, hotéis (vários), mapas, seções e botões clicáveis.
 // GET /api/pdf?id=<id>
-// Dependência: pdf-lib. Usa também /api/city-photo, /api/hotel-photos, /api/place-photo e o Google Static Maps.
 
 const {
   PDFDocument, StandardFonts, rgb, PDFName, PDFString,
@@ -31,7 +30,6 @@ const GREEN = rgb(0.145, 0.616, 0.333);
 const INK = rgb(0.15, 0.19, 0.25);
 const MUTED = rgb(0.42, 0.47, 0.54);
 const LINE = rgb(0.90, 0.92, 0.94);
-const BG = rgb(0.965, 0.972, 0.98);
 
 async function fetchBytes(url, ms) {
   try {
@@ -59,9 +57,16 @@ module.exports = async (req, res) => {
 
   const host = 'https://' + (req.headers.host || '');
   const gkey = process.env.GOOGLE_MAPS_API_KEY || '';
-  const soVoo = (d.voos && d.voos.length) && !(d.hotel && d.hotel.nome);
 
-  // ---------- busca de imagens em paralelo ----------
+  // hotéis: lista (vários) ou objeto único (compatibilidade)
+  d.hoteis = (Array.isArray(d.hoteis) && d.hoteis.length) ? d.hoteis.filter(h => h && h.nome)
+           : ((d.hotel && d.hotel.nome) ? [d.hotel] : []);
+  if (d.hoteis.length) d.hotel = d.hoteis[0];
+  const temVoo = !!(d.voos && d.voos.length);
+  const soVoo = temVoo && !d.hoteis.length;
+  const soHotel = !temVoo && d.hoteis.length > 0;
+
+  // ---------- imagens em paralelo ----------
   const jobs = {};
   if (!soVoo) {
     const destQ = d.destinoBusca || d.destinoResumo || '';
@@ -72,41 +77,41 @@ module.exports = async (req, res) => {
         return j.imagem ? await fetchBytes(j.imagem, 7000) : null;
       } catch (e) { return null; }
     })();
-    if (d.hotel && d.hotel.nome) jobs.hotelFotos = (async () => {
-      try {
-        const q = encodeURIComponent(`${d.hotel.nome} ${d.hotel.endereco || ''}`);
-        const r = await fetch(host + '/api/hotel-photos?q=' + q);
-        if (!r.ok) return [];
-        const j = await r.json();
-        const refs = (j.photoRefs || []).slice(0, 4);
-        if (j.coordinates) d.hotel.geo = { lat: j.coordinates.lat, lon: j.coordinates.lon };
-        const imgs = await Promise.all(refs.map(ref => fetchBytes(host + '/api/place-photo?ref=' + encodeURIComponent(ref) + '&w=400', 7000)));
-        return imgs.filter(Boolean);
-      } catch (e) { return []; }
-    })();
+    d.hoteis.slice(0, 4).forEach((h, i) => {
+      jobs['hotelFotos' + i] = (async () => {
+        try {
+          const q = encodeURIComponent(`${h.nome} ${h.endereco || ''}`);
+          const r = await fetch(host + '/api/hotel-photos?q=' + q);
+          if (!r.ok) return [];
+          const j = await r.json();
+          if (j.coordinates) h.geo = { lat: j.coordinates.lat, lon: j.coordinates.lon };
+          const refs = (j.photoRefs || []).slice(0, 4);
+          const imgs = await Promise.all(refs.map(ref => fetchBytes(host + '/api/place-photo?ref=' + encodeURIComponent(ref) + '&w=400', 7000)));
+          return imgs.filter(Boolean);
+        } catch (e) { return []; }
+      })();
+    });
   }
-  // mapas estáticos (Google Static Maps)
   const ida = d.mapaVoo && d.mapaVoo.ida && d.mapaVoo.ida.pontos && d.mapaVoo.ida.pontos.length >= 2 ? d.mapaVoo.ida.pontos : null;
   if (gkey && ida) {
     const p1 = ida[0], p2 = ida[ida.length - 1];
     jobs.mapaVoo = fetchBytes(`https://maps.googleapis.com/maps/api/staticmap?size=480x300&language=pt-BR&path=color:0x3a7ca5ff%7Cweight:3%7C${p1.lat},${p1.lon}%7C${p2.lat},${p2.lon}&markers=size:mid%7Ccolor:0xc3a063%7C${p1.lat},${p1.lon}&markers=size:mid%7Ccolor:0x1f9d55%7C${p2.lat},${p2.lon}&key=${gkey}`, 7000);
   }
-  // logos das companhias aéreas (por código IATA)
+  // logos das companhias
   const trechosAll = (d.voos && d.voos[0] && d.voos[0].trechos) || [];
   const iatas = [...new Set(trechosAll.map(t => t.iata).filter(Boolean))];
   iatas.forEach(c => { jobs['logo_' + c] = fetchBytes(`https://pics.avs.io/120/40/${c}.png`, 5000); });
-
-  // logos da marca e parceiros (servidos pela pasta /img do próprio site)
+  // marca e parceiros
   jobs.logoMd = fetchBytes(host + '/img/logo-md.jpg', 5000);
   jobs.cadastur = fetchBytes(host + '/img/cadastur.png', 5000);
   ['rextur', 'cvc', 'flytour', 'sakura', 'patria'].forEach(k => { jobs[k] = fetchBytes(host + '/img/' + k + '.png', 5000); });
 
-  jobs.done = Promise.resolve();
   const assets = {};
   await Promise.all(Object.keys(jobs).map(async k => { assets[k] = await jobs[k]; }));
-  // mapa do hotel depois do hotel-photos (precisa da coordenada)
-  if (gkey && d.hotel && d.hotel.geo && d.hotel.geo.lat) {
-    assets.mapaHotel = await fetchBytes(`https://maps.googleapis.com/maps/api/staticmap?size=480x300&zoom=14&language=pt-BR&markers=color:red%7C${d.hotel.geo.lat},${d.hotel.geo.lon}&key=${gkey}`, 7000);
+  if (gkey) {
+    await Promise.all(d.hoteis.slice(0, 4).map(async (h, i) => {
+      if (h.geo && h.geo.lat) assets['mapaHotel' + i] = await fetchBytes(`https://maps.googleapis.com/maps/api/staticmap?size=480x300&zoom=14&language=pt-BR&markers=color:red%7C${h.geo.lat},${h.geo.lon}&key=${gkey}`, 7000);
+    }));
   }
 
   try {
@@ -114,7 +119,6 @@ module.exports = async (req, res) => {
     const H = await pdf.embedFont(StandardFonts.Helvetica);
     const B = await pdf.embedFont(StandardFonts.HelveticaBold);
     const W = 595.28, PH = 841.89, ML = 46, MR = 46, CW = W - ML - MR;
-
     let page = pdf.addPage([W, PH]);
     let y = PH;
 
@@ -122,11 +126,10 @@ module.exports = async (req, res) => {
       if (!buf) return null;
       try { return await pdf.embedJpg(buf); } catch (e) { try { return await pdf.embedPng(buf); } catch (e2) { return null; } }
     };
-    // remove emojis/símbolos fora do alfabeto latino (a fonte padrão do PDF não os suporta)
     const clean = (s) => String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{2600}-\u{26FF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
     const txt = (s, x, yy, size, font, color) => page.drawText(clean(s), { x, y: yy, size, font, color: color || INK });
     const wrap = (s, size, font, maxw) => {
-      const words = String(s || '').split(/\s+/); const lines = []; let cur = '';
+      const words = clean(s).split(/\s+/); const lines = []; let cur = '';
       words.forEach(w => { const t = cur ? cur + ' ' + w : w;
         if (font.widthOfTextAtSize(t, size) > maxw && cur) { lines.push(cur); cur = w; } else cur = t; });
       if (cur) lines.push(cur); return lines;
@@ -146,9 +149,9 @@ module.exports = async (req, res) => {
       annots.push(ref);
     };
     const button = (label, x, yBot, w, h, bg, fg, url, size) => {
-      page.drawRectangle({ x, y: yBot, width: w, height: h, color: bg, borderColor: bg, borderWidth: 0, opacity: 1 });
+      page.drawRectangle({ x, y: yBot, width: w, height: h, color: bg });
       const fs = size || 9.5;
-      const tw = B.widthOfTextAtSize(label, fs);
+      const tw = B.widthOfTextAtSize(clean(label), fs);
       txt(label, x + (w - tw) / 2, yBot + (h - fs) / 2 + 1.5, fs, B, fg);
       addLink(x, yBot, w, h, url);
     };
@@ -162,10 +165,9 @@ module.exports = async (req, res) => {
       y -= 16;
     };
 
-    const soHotel = (d.hotel && d.hotel.nome) && !(d.voos && d.voos.length);
     const titulo = soVoo ? 'Cotação de Voos' : (soHotel ? 'Cotação de Hospedagem' : 'Cotação de Viagem');
 
-    // ===== faixa topo (com a logo da MD) =====
+    // ===== topo com a logo =====
     const logoMd = await embed(assets.logoMd);
     page.drawRectangle({ x: 0, y: y - 56, width: W, height: 56, color: NAVY });
     if (logoMd) { const lh = 44, lw = lh * (logoMd.width / logoMd.height); page.drawImage(logoMd, { x: ML, y: y - 50, width: lw, height: lh }); }
@@ -179,20 +181,18 @@ module.exports = async (req, res) => {
     y -= 26;
 
     // ===== título e dados =====
-    txt(d.hero && d.hero.titulo ? d.hero.titulo.replace(/[^ -~À-ÿ]/g, '').trim() : titulo, ML, y, 20, B, NAVY); y -= 20;
+    txt(d.hero && d.hero.titulo ? d.hero.titulo : titulo, ML, y, 20, B, NAVY); y -= 20;
     const cli = (d.cliente && d.cliente.nome) || '';
     const lin = [cli ? 'Cliente: ' + cli : '', (d.valores && d.valores.cotadoEm) ? 'Cotado em ' + d.valores.cotadoEm : '', d.codigo || ''].filter(Boolean).join('   •   ');
     if (lin) { txt(lin, ML, y, 10, H, MUTED); y -= 14; }
     y -= 8;
 
     // ===== VOOS =====
-    const trechos = (d.voos && d.voos[0] && d.voos[0].trechos) || [];
+    const trechos = trechosAll;
     if (trechos.length) {
       secTitle('Voos');
-      // larguras somam 486 (< 503 disponíveis) — nada é cortado na lateral
       const cols = [{ w: 40 }, { w: 78 }, { w: 48 }, { w: 90 }, { w: 90 }, { w: 40 }, { w: 46 }, { w: 54 }];
       const heads = ['Trecho', 'Data', 'Cia', 'Origem', 'Destino', 'Saída', 'Chegada', 'Tipo'];
-      // logos embutidos
       const logos = {};
       for (const c of iatas) { logos[c] = await embed(assets['logo_' + c]); }
       ensure(24 + trechos.length * 26);
@@ -202,11 +202,11 @@ module.exports = async (req, res) => {
       y -= 22;
       trechos.forEach(t => {
         x = ML;
-        const vals = [t.tipo === 'volta' ? 'Volta' : 'Ida', t.data || '', null /*cia: logo*/,
+        const vals = [t.tipo === 'volta' ? 'Volta' : 'Ida', t.data || '', null,
           (t.de || '') + ' ' + (t.deCidade || ''), (t.para || '') + ' ' + (t.paraCidade || ''),
-          t.saida || '', t.chegada || '', /direto/i.test(t.conexao || '') ? 'Direto' : (t.conexao ? '1 parada' : '—')];
+          t.saida || '', t.chegada || '', /direto/i.test(t.conexao || '') ? 'Direto' : (t.conexao ? '1 parada' : '-')];
         vals.forEach((v, i) => {
-          if (i === 2) { // coluna Cia: logo da companhia (ou texto se o logo falhar)
+          if (i === 2) {
             const lg = t.iata && logos[t.iata];
             if (lg) { const lw = Math.min(cols[i].w - 8, 12 * (lg.width / lg.height)); page.drawImage(lg, { x: x + 4, y: y - 4, width: lw, height: 12 }); }
             else txt(t.iata || t.cia || '', x + 4, y, 8, H, INK);
@@ -225,40 +225,53 @@ module.exports = async (req, res) => {
       y -= 6;
     }
 
-    // ===== MAPAS (lado a lado) =====
+    // ===== MAPAS =====
     const mV = await embed(assets.mapaVoo);
-    const mH = await embed(assets.mapaHotel);
-    if (mV || mH) {
+    const mapasHotel = [];
+    for (let i = 0; i < d.hoteis.length; i++) { const im = await embed(assets['mapaHotel' + i]); if (im) mapasHotel.push({ im, nome: d.hoteis[i].cidade || d.hoteis[i].nome }); }
+    if (mV || mapasHotel.length) {
       secTitle('Mapas');
       const mw = (CW - 12) / 2, mh = 120;
-      ensure(mh + 26);
-      if (mV) { cover(mV, ML, y - mh, mw, mh); txt('Rota do voo', ML, y - mh - 11, 8, H, MUTED); }
-      if (mH) { cover(mH, ML + mw + 12, y - mh, mw, mh); txt('Localização do hotel', ML + mw + 12, y - mh - 11, 8, H, MUTED); }
-      y -= mh + 24;
+      let col = 0;
+      const put = (img, legenda) => {
+        if (col === 0) ensure(mh + 26);
+        const x = ML + col * (mw + 12);
+        cover(img, x, y - mh, mw, mh);
+        txt(legenda, x, y - mh - 11, 8, H, MUTED);
+        col++;
+        if (col === 2) { y -= mh + 24; col = 0; }
+      };
+      if (mV) put(mV, 'Rota do voo');
+      mapasHotel.forEach(m => put(m.im, m.nome));
+      if (col === 1) y -= mh + 24;
     }
 
-    // ===== HOSPEDAGEM =====
-    if (d.hotel && d.hotel.nome) {
-      secTitle('Hospedagem');
-      ensure(40);
-      txt(d.hotel.nome + (d.hotel.estrelas ? `  ·  ${d.hotel.estrelas} estrelas` : ''), ML, y, 12.5, B, INK); y -= 14;
-      if (d.hotel.endereco) { txt(wrap(d.hotel.endereco, 9, H, CW)[0], ML, y, 9, H, MUTED); y -= 12; }
-      const per = [d.hotel.checkin && d.hotel.checkout ? `Período: ${d.hotel.checkin} a ${d.hotel.checkout}` : '', d.hotel.noites ? `${d.hotel.noites} noites` : ''].filter(Boolean).join('   •   ');
-      if (per) { txt(per, ML, y, 9.5, H, INK); y -= 13; }
-      (d.hotel.quartos || []).slice(0, 2).forEach(q => {
-        const l = [q.nome, q.ocupacao, q.plano, q.restricao].filter(Boolean).join('  ·  ');
-        txt(wrap(l, 9, H, CW)[0], ML, y, 9, H, INK); y -= 12;
-      });
-      // 4 fotos pequenas
-      const fotos = [];
-      for (const b of (assets.hotelFotos || [])) { const im = await embed(b); if (im) fotos.push(im); }
-      if (fotos.length) {
-        const fw = (CW - 3 * 8) / 4, fh = 62;
-        ensure(fh + 12); y -= 4;
-        fotos.slice(0, 4).forEach((im, i) => cover(im, ML + i * (fw + 8), y - fh, fw, fh));
-        y -= fh + 10;
+    // ===== HOSPEDAGEM (um bloco por hotel) =====
+    if (d.hoteis.length) {
+      secTitle(d.hoteis.length > 1 ? 'Hospedagem · ' + d.hoteis.length + ' hoteis' : 'Hospedagem');
+      for (let hi = 0; hi < d.hoteis.length; hi++) {
+        const h = d.hoteis[hi];
+        ensure(50);
+        if (h.cidade) { txt(String(h.cidade).toUpperCase(), ML, y, 9, B, GOLD); y -= 13; }
+        txt(h.nome + (h.estrelas ? `  ·  ${h.estrelas} estrelas` : ''), ML, y, 12, B, INK); y -= 13;
+        if (h.endereco) { txt(wrap(h.endereco, 9, H, CW)[0], ML, y, 9, H, MUTED); y -= 12; }
+        const per = [h.checkin && h.checkout ? `Período: ${h.checkin} a ${h.checkout}` : '', h.noites ? `${h.noites} noites` : ''].filter(Boolean).join('   •   ');
+        if (per) { txt(per, ML, y, 9.5, H, INK); y -= 13; }
+        (h.quartos || []).slice(0, 2).forEach(q => {
+          const l = [q.nome, q.ocupacao, q.plano, q.restricao].filter(Boolean).join('  ·  ');
+          txt(wrap(l, 9, H, CW)[0], ML, y, 9, H, INK); y -= 12;
+        });
+        const fotos = [];
+        for (const b of (assets['hotelFotos' + hi] || [])) { const im = await embed(b); if (im) fotos.push(im); }
+        if (fotos.length) {
+          const fw = (CW - 3 * 8) / 4, fh = 58;
+          ensure(fh + 12); y -= 4;
+          fotos.slice(0, 4).forEach((im, i) => cover(im, ML + i * (fw + 8), y - fh, fw, fh));
+          y -= fh + 10;
+        }
+        if (hi < d.hoteis.length - 1) { page.drawLine({ start: { x: ML, y: y - 2 }, end: { x: W - MR, y: y - 2 }, thickness: 0.6, color: LINE }); y -= 14; }
       }
-      y -= 4;
+      y -= 6;
     }
 
     // ===== TRANSFER / SEGURO =====
@@ -273,7 +286,7 @@ module.exports = async (req, res) => {
       wrap(l, 9, H, CW).forEach(s => { ensure(12); txt(s, ML, y, 9, H, INK); y -= 12; }); y -= 6;
     }
 
-    // ===== INVESTIMENTO (caixa azul) =====
+    // ===== INVESTIMENTO =====
     const v = d.valores || {};
     const brl = n => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     const pad2 = n => String(n).padStart(2, '0');
@@ -298,7 +311,7 @@ module.exports = async (req, res) => {
     // ===== BOTÕES =====
     const cod = d.codigo || d.numero || '';
     const waMod = op => 'https://wa.me/5531983651769?text=' + encodeURIComponent(`Olá! Sobre o orçamento ${cod}: quero ${op}.`);
-    ensure(120);
+    ensure(130);
     const bt = 'Quer modificar? Escolha:';
     txt(bt, ML + (CW - B.widthOfTextAtSize(bt, 12)) / 2, y, 12, B, NAVY); y -= 22;
     const bw = (CW - 12) / 2, bhh = 24;
@@ -308,7 +321,7 @@ module.exports = async (req, res) => {
     button('MODIFICAR HOTEL', ML, y - bhh, bw, bhh, GOLD, NAVY, waMod('MODIFICAR HOTEL'));
     button('ADICIONAR TRANSFER', ML + bw + 12, y - bhh, bw, bhh, GOLD, NAVY, waMod('ADICIONAR TRANSFER'));
     y -= bhh + 14;
-    ensure(80);
+    ensure(84);
     button('FALAR NO WHATSAPP E FECHAR MINHA VIAGEM', ML, y - 32, CW, 32, GREEN, rgb(1, 1, 1), 'https://wa.me/5531983651769?text=' + encodeURIComponent(`Olá! Quero fechar o orçamento ${cod}!`), 12);
     y -= 40;
     button('VER ORÇAMENTO INTERATIVO COMPLETO', ML, y - 26, CW, 26, NAVY2, GOLD, host + '/o/' + encodeURIComponent(id), 10.5);
@@ -325,7 +338,7 @@ module.exports = async (req, res) => {
     const ag = d.agente || {};
     txt(`${ag.nome || 'Gabriela Aquino'}  ·  ${ag.telefone || '(31) 98365-1769'}  ·  ${ag.email || 'gabriela@mdviagens.com'}`, ML, y, 9.5, B, NAVY);
 
-    // rodapé na última página: parceiros + faixa navy com Cadastur
+    // ===== rodapé: parceiros + faixa =====
     if (y < 110) newPage();
     const pImgs = [];
     for (const k of ['rextur', 'cvc', 'flytour', 'sakura', 'patria']) { const im = await embed(assets[k]); if (im) pImgs.push(im); }
@@ -339,8 +352,7 @@ module.exports = async (req, res) => {
       pImgs.forEach((im, i) => { page.drawImage(im, { x: px, y: 42, width: widths[i], height: lh }); px += widths[i] + gap; });
     }
     page.drawRectangle({ x: 0, y: 0, width: W, height: 30, color: NAVY });
-    const foot = 'MD VIAGENS  •  Atendimento em Sete Lagoas e Belo Horizonte';
-    txt(foot, ML, 11, 8.5, B, GOLD);
+    txt('MD VIAGENS  •  Atendimento em Sete Lagoas e Belo Horizonte', ML, 11, 8.5, B, GOLD);
     const cad = await embed(assets.cadastur);
     if (cad) { const ch = 13, cw2 = ch * (cad.width / cad.height); page.drawImage(cad, { x: W - MR - cw2, y: 8.5, width: cw2, height: ch }); }
 

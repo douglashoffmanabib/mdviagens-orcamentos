@@ -60,13 +60,16 @@ Formato exato do JSON:
       ]
     }
   ],
-  "hotel": {
-    "nome": "string", "estrelas": número(1-5),
-    "endereco": "string completo",
-    "checkin": "DD/MM", "checkout": "DD/MM", "noites": número,
-    "quartos": [ { "nome": "ex: Standard", "ocupacao": "ex: 2 adultos", "plano": "ex: All Inclusive", "restricao": "ex: Reembolsável até 7 dias antes", "reembolsavel": true|false } ],
-    "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
-  },
+  "hoteis": [
+    {
+      "cidade": "cidade do hotel (importante em roteiros com mais de um hotel)",
+      "nome": "string", "estrelas": número(1-5),
+      "endereco": "string completo",
+      "checkin": "DD/MM", "checkout": "DD/MM", "noites": número,
+      "quartos": [ { "nome": "ex: Standard", "ocupacao": "ex: 2 adultos", "plano": "ex: All Inclusive", "restricao": "ex: Reembolsável até 7 dias antes", "reembolsavel": true|false } ],
+      "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
+    }
+  ],
   "transfer": null,
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
   "valores": {
@@ -79,6 +82,7 @@ Formato exato do JSON:
 }
 
 Regras:
+- "hoteis" é SEMPRE uma lista. Se a viagem tiver MAIS DE UM hotel (roteiros por várias cidades), inclua TODOS, um item por hotel, na ordem cronológica, preenchendo "cidade". Se não houver hotel, use [].
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
@@ -158,7 +162,17 @@ module.exports = async (req, res) => {
 
 // Enriquecimento: agente fixo, coordenadas dos aeroportos, mapa de voo, capa e resumo.
 function enrich(d) {
-  const hotel = d.hotel || {};
+  // hotéis: aceita lista (vários) ou objeto único (compatibilidade)
+  let hoteis = Array.isArray(d.hoteis) ? d.hoteis.filter(h => h && h.nome)
+             : (d.hotel && d.hotel.nome ? [d.hotel] : []);
+  hoteis = hoteis.map(h => ({
+    ...h,
+    geo: null,                 // preenchido depois (Google Places) ou geocodificado
+    fotos: [],                 // preenchidas pela API na página
+    fotosFonte: 'Fotos reais do hotel',
+    quartos: (h.quartos || []).map(q => ({ ...q, cor: q.reembolsavel ? 'green' : 'orange' }))
+  }));
+  const hotel = hoteis[0] || {};
   let voos = Array.isArray(d.voos) ? d.voos : [];
 
   // Consolida todos os trechos, ORDENA POR DATA (mais cedo = ida) e corrige o rótulo ida/volta.
@@ -187,14 +201,13 @@ function enrich(d) {
     volta: volta ? { rota: `${volta.deCidade} → ${volta.paraCidade}`, pontos: buildRoute(volta) } : null
   };
 
-  // restrição -> cor do selo
-  (hotel.quartos || []).forEach(q => { q.cor = q.reembolsavel ? 'green' : 'orange'; });
-
+  const noitesTotal = hoteis.reduce((a, h) => a + (parseInt(h.noites, 10) || 0), 0);
   const chips = [];
   if (ida && volta) chips.push(`📅 ${ida.data} → ${volta.data}`);
-  if (hotel.noites) chips.push(`🌙 ${hotel.noites} noites`);
+  if (noitesTotal) chips.push(`🌙 ${noitesTotal} noites`);
+  if (hoteis.length > 1) chips.push(`🏨 ${hoteis.length} hotéis`);
   if (voos[0] && voos[0].viajantes) chips.push(`👥 ${voos[0].viajantes}`);
-  if ((hotel.quartos || []).some(q => /all inclusive|tudo incluso/i.test(q.plano || ''))) chips.push('🍽️ All Inclusive');
+  if (hoteis.some(h => (h.quartos || []).some(q => /all inclusive|tudo incluso/i.test(q.plano || '')))) chips.push('🍽️ All Inclusive');
 
   const hoje = new Date().toLocaleDateString('pt-BR');
 
@@ -215,12 +228,13 @@ function enrich(d) {
     },
     resumo: [
       { k: 'Destino', v: d.destinoResumo || '' },
-      { k: 'Período', v: hotel.checkin && hotel.checkout ? `${hotel.checkin}–${hotel.checkout}` : '' },
+      { k: 'Período', v: hoteis.length ? `${hoteis[0].checkin || ''}–${hoteis[hoteis.length - 1].checkout || ''}` : (ida && volta ? `${ida.data}–${volta.data}` : '') },
       { k: 'Viajantes', v: (voos[0] && voos[0].viajantes) || '' },
-      { k: 'Noites', v: hotel.noites || '' }
+      { k: hoteis.length > 1 ? 'Hotéis' : 'Noites', v: hoteis.length > 1 ? `${hoteis.length} · ${noitesTotal} noites` : (noitesTotal || '') }
     ],
     mapaVoo,
     voos,
+    hoteis,                 // lista completa (1 ou vários hotéis)
     hotel: {
       ...hotel,
       geo: null, // sem coord no PDF -> o template geocodifica pelo endereço; com Hotelbeds vem exata
