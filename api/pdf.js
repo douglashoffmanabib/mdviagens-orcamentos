@@ -162,7 +162,8 @@ module.exports = async (req, res) => {
       y -= 16;
     };
 
-    const titulo = soVoo ? 'Cotação de Voos' : 'Cotação de Viagem';
+    const soHotel = (d.hotel && d.hotel.nome) && !(d.voos && d.voos.length);
+    const titulo = soVoo ? 'Cotação de Voos' : (soHotel ? 'Cotação de Hospedagem' : 'Cotação de Viagem');
 
     // ===== faixa topo (com a logo da MD) =====
     const logoMd = await embed(assets.logoMd);
