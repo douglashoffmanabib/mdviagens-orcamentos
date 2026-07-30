@@ -45,37 +45,50 @@ Extraia fielmente. Use null quando não houver. NÃO invente dados.
   "titular": "nome do cliente titular",
   "passageiros": [ { "nome": "NOME COMPLETO", "nascimento": "DD/MM/AAAA ou null", "documento": "CPF/RG ou null" } ],
   "voos": [
-    { "tipo": "ida"|"volta", "data": "DD/MM/AAAA", "cia": "ex: GOL", "iata": "código IATA da cia (GOL=G3, LATAM=LA, AZUL=AD)",
-      "voo": "número do voo (ex: G3 1137)", "localizadorCia": "localizador da companhia, se houver",
-      "de": "IATA origem", "deCidade": "cidade origem", "para": "IATA destino", "paraCidade": "cidade destino",
-      "saida": "HH:MM", "chegada": "HH:MM", "bagagem": "texto sobre bagagem", "conexao": "texto ou 'Voo direto'" }
+    {
+      "tipo": "ida" | "volta" | "trecho",
+      "data": "DD/MM/AAAA",
+      "de": "IATA origem", "deCidade": "cidade origem",
+      "para": "IATA destino", "paraCidade": "cidade destino",
+      "cia": "nome da companhia (ex: GOL, LATAM, AZUL)",
+      "iata": "código IATA da companhia (GOL=G3, LATAM=LA, AZUL=AD, AVIANCA=AV, COPA=CM)",
+      "voo": "número do voo (ex: G3 1137)",
+      "saida": "HH:MM", "chegada": "HH:MM",
+      "conexao": "texto da conexão ou 'Voo direto'",
+      "bagagem": "ex: 1 bagagem de mão 10kg",
+      "localizadorCia": "localizador na companhia aérea, se aparecer"
+    }
   ],
-  "hotel": { "nome": "", "endereco": "", "telefone": "", "checkin": "DD/MM/AAAA", "horaCheckin": "ex: 15:00",
-             "checkout": "DD/MM/AAAA", "horaCheckout": "ex: 12:00", "noites": número,
-             "acomodacao": "ex: Quarto Standard (2 adultos)", "regime": "ex: Café da manhã / All inclusive" },
-  "transfer": { "tipo": "", "trajeto": "", "data": "", "hora": "", "detalhe": "" },
-  "carro": { "locadora": "", "categoria": "", "modelo": "", "transmissao": "", "portas": "", "arCondicionado": "",
-             "retiradaLocal": "", "retiradaData": "DD/MM/AAAA HH:MM", "devolucaoLocal": "", "devolucaoData": "DD/MM/AAAA HH:MM",
-             "condutor": "", "inclui": "o que a tarifa inclui" },
-  "seguro": { "seguradora": "", "apolice": "", "plano": "", "periodo": "", "emergencia": "telefone 24h" },
-  "politicaCancelamento": ["item 1", "item 2"],
-  "informacoesImportantes": ["item 1", "item 2"]
+  "hotel": null | {
+    "nome": "string", "endereco": "endereço completo", "telefone": "telefone do hotel",
+    "checkin": "DD/MM/AAAA", "checkout": "DD/MM/AAAA", "horaCheckin": "HH:MM", "horaCheckout": "HH:MM",
+    "noites": número, "acomodacao": "ex: Apartamento Duplo Standard", "regime": "ex: Café da manhã / All Inclusive"
+  },
+  "transfer": null | { "tipo": "ex: Privativo", "trajeto": "ex: Aeroporto -> Hotel", "data": "DD/MM/AAAA", "hora": "HH:MM", "detalhe": "observações" },
+  "carro": null | {
+    "locadora": "string", "categoria": "string", "modelo": "string",
+    "retiradaLocal": "string", "retiradaData": "DD/MM/AAAA HH:MM",
+    "devolucaoLocal": "string", "devolucaoData": "DD/MM/AAAA HH:MM",
+    "transmissao": "Automático/Manual", "arCondicionado": true|false, "portas": número, "inclui": "o que está incluso"
+  },
+  "seguro": null | { "seguradora": "string", "plano": "string", "apolice": "número da apólice", "periodo": "DD/MM a DD/MM", "emergencia": "telefone de emergência" },
+  "politicaCancelamento": "texto da política, se houver",
+  "informacoesImportantes": ["frases curtas com avisos importantes do documento"]
 }
 
 Regras:
-- Preencha só os blocos que existirem no documento; os demais devem ser null.
-- Se houver vários documentos, combine tudo num único voucher (ex.: voo num arquivo e hotel em outro).
-- Responda somente o JSON.`;
+- Responda somente o JSON, sem emojis e sem textos longos.
+- Se o documento tiver vários trechos aéreos, inclua todos em "voos", em ordem cronológica.`;
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGIN || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST com { arquivos }' });
 
   const KEY = process.env.ANTHROPIC_API_KEY;
-  if (!KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada.' });
+  if (!KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada no servidor.' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -90,21 +103,33 @@ module.exports = async (req, res) => {
   });
   content.push({ type: 'text', text: SCHEMA });
 
+  const model = process.env.EXTRACT_MODEL || 'claude-sonnet-5';
+  const tentativas = [Number(process.env.EXTRACT_MAX_TOKENS) || 8000, 4096, 4000];
+  let out = null, ultimoErro = '';
+
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.EXTRACT_MODEL || 'claude-sonnet-5',
-        max_tokens: 12000,
-        messages: [{ role: 'user', content }, { role: 'assistant', content: '{' }]
-      })
-    });
-    if (!r.ok) { const t = await r.text(); return res.status(r.status).json({ error: 'Erro na IA', detail: t.slice(0, 500) }); }
-    const out = await r.json();
+    for (const mt of tentativas) {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          max_tokens: mt,
+          messages: [{ role: 'user', content }, { role: 'assistant', content: '{' }]
+        })
+      });
+      if (r.ok) { out = await r.json(); break; }
+      ultimoErro = (await r.text() || '').slice(0, 600);
+      if (!/max_tokens|too large|exceed/i.test(ultimoErro)) {
+        return res.status(r.status).json({ error: 'Erro na IA', detail: ultimoErro });
+      }
+    }
+    if (!out) return res.status(502).json({ error: 'Erro na IA', detail: ultimoErro });
+
     const text = '{' + (out.content || []).map(b => b.text || '').join('');
     const d = parseModelJson(text);
     if (!d) return res.status(502).json({ error: 'JSON inválido', detail: 'stop_reason=' + (out.stop_reason || '?') + ' | fim: ' + text.slice(-200), raw: text.slice(0, 600) });
+
     d.agente = { nome: 'Gabriela Aquino', telefone: '(31) 98365-1769', email: 'gabriela@mdviagens.com', whatsapp: '5531983651769' };
     return res.status(200).json({ data: d });
   } catch (e) {
