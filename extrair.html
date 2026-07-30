@@ -38,6 +38,15 @@
   .btn{ display:inline-block; text-decoration:none; border:1px solid var(--line); background:#2c3138; color:var(--ink); border-radius:999px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
   .btn.p{ background:var(--gold); color:#1b1b1b; border-color:var(--gold); }
   .btn.w{ background:var(--green); color:#fff; border-color:var(--green); }
+  .fotoTitulo{ width:100%; font-weight:700; margin:4px 0 2px; }
+  .fotoGrid{ width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .fotoCard{ position:relative; border:3px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; aspect-ratio:16/10; background:#111; }
+  .fotoCard img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .fotoCard:hover{ border-color:var(--gold); }
+  .fotoCard.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(195,160,99,.4); }
+  .fotoNum{ position:absolute; top:6px; left:6px; background:var(--gold); color:#1b1b1b; font-weight:800; font-size:13px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .fotoCred{ position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#ddd; font-size:10px; padding:2px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fotoAcoes{ width:100%; display:flex; gap:10px; align-items:center; }
 </style>
 </head>
 <body>
@@ -131,29 +140,94 @@ async function gerar(arquivos, label){
     const ct = ($('cliTel').value || '').trim();
     if (cn || ct) { j.data.cliente = j.data.cliente || {}; if (cn) j.data.cliente.nome = cn; if (ct) j.data.cliente.telefone = ct; }
 
-    let id, codigo, tipo;
-    try {
-      const sr = await fetch('/api/save', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ data: j.data }) });
-      if (sr.ok) { const s = await sr.json(); id = s.id; codigo = s.codigo; tipo = s.tipo; }
-    } catch(e){}
-
-    let url, pdf;
-    if (id) { url = location.origin + '/o/' + id; pdf = location.origin + '/api/pdf?id=' + encodeURIComponent(id); }
-    else {
-      const b = btoa(unescape(encodeURIComponent(JSON.stringify(j.data))));
-      url = location.origin + '/orcamento.html#' + b; pdf = url;
+    // pacote/hotel: oferecer as 5 fotos do destino para escolher a capa
+    const temHotel = (Array.isArray(j.data.hoteis) && j.data.hoteis.length) || (j.data.hotel && j.data.hotel.nome);
+    if (temHotel && (j.data.destinoBusca || j.data.destinoResumo)) {
+      const fotos = await buscarFotos(j.data);
+      if (fotos && fotos.length) { montarEscolha(j.data, label, fotos); return; }
     }
-    if (!tipo && codigo) tipo = String(codigo).slice(0,3);
-
-    const cliente = (j.data.cliente && j.data.cliente.nome) || cn || '';
-    const tel = (j.data.cliente && j.data.cliente.telefone) || ct || '';
-    const destino = j.data.destinoMensagem || j.data.destinoResumo || '';
-    addCard({ ok:true, arquivo:label, cliente, codigo, tipo, url, pdf, wa: waLink(soDocLink(tipo) ? pdf : url, cliente, tel, destino) });
+    await finalizar(j.data, label, null);
   } catch(e){
     addCard({ ok:false, arquivo:label, erro:String(e) });
   }
 }
 const soDocLink = t => t === 'AER' || t === 'HTL';
+
+async function buscarFotos(data){
+  try{
+    const alts = [data.pais, data.destinoMensagem, (data.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
+    const r = await fetch('/api/city-photos?q=' + encodeURIComponent(data.destinoBusca || data.destinoResumo)
+      + (alts ? '&alt=' + encodeURIComponent(alts) : ''));
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.escolhida && j.fotos) j.fotos.forEach(f => { f.pre = (f.url === j.escolhida); });
+    return j.fotos || null;
+  } catch(e){ return null; }
+}
+
+let _esc = 0;
+function montarEscolha(data, label, fotos){
+  const eid = 'esc' + (_esc++);
+  const grid = fotos.map((f, i) => `
+    <div class="fotoCard${f.pre ? ' sel' : ''}" id="${eid}_${i}" onclick="escolher('${eid}',${i})">
+      <span class="fotoNum">${i + 1}</span>
+      <img src="${f.thumb || f.url}" alt="Opção ${i + 1}">
+      <div class="fotoCred">${f.credito || ''}</div>
+    </div>`).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">${(data.cliente && data.cliente.nome) || 'Orçamento'} — escolha a foto de capa (${data.destinoMensagem || data.destinoResumo || ''}):</div>
+    <div class="fotoGrid">${grid}</div>
+    <div class="fotoAcoes">
+      <button class="btn p" onclick="confirmarFoto('${eid}')">USAR FOTO SELECIONADA</button>
+      <button class="btn" onclick="confirmarFoto('${eid}', true)">Automática (sem escolher)</button>
+    </div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._fotos = fotos;
+  el._sel = Math.max(0, fotos.findIndex(f => f.pre));
+  if (!fotos.some(f => f.pre)) el._sel = -1;
+}
+function escolher(eid, i){
+  const el = $(eid); el._sel = i;
+  el.querySelectorAll('.fotoCard').forEach((c, k) => c.classList.toggle('sel', k === i));
+}
+async function confirmarFoto(eid, automatica){
+  const el = $(eid);
+  const foto = (!automatica && el._sel >= 0) ? el._fotos[el._sel] : null;
+  el.querySelector('.fotoAcoes').innerHTML = 'Gerando o link…';
+  await finalizar(el._data, el._label, foto);
+  el.remove();
+}
+
+async function finalizar(data, label, foto){
+  if (foto) {
+    data.hero = data.hero || {};
+    data.hero.imagem = foto.url;
+    data.fotoEscolhida = true;
+    data.fotoCredito = foto.credito || '';
+    // guarda a escolha para essa cidade (pré-seleciona da próxima vez)
+    try { fetch('/api/city-photos', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ cidade: data.destinoBusca || data.destinoResumo, url: foto.url }) }); } catch(e){}
+  }
+  let id, codigo, tipo;
+  try {
+    const sr = await fetch('/api/save', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ data }) });
+    if (sr.ok) { const s = await sr.json(); id = s.id; codigo = s.codigo; tipo = s.tipo; }
+  } catch(e){}
+
+  let url, pdf;
+  if (id) { url = location.origin + '/o/' + id; pdf = location.origin + '/api/pdf?id=' + encodeURIComponent(id); }
+  else {
+    const b = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    url = location.origin + '/orcamento.html#' + b; pdf = url;
+  }
+  if (!tipo && codigo) tipo = String(codigo).slice(0,3);
+
+  const cliente = (data.cliente && data.cliente.nome) || '';
+  const tel = (data.cliente && data.cliente.telefone) || ($('cliTel').value || '').trim();
+  const destino = data.destinoMensagem || data.destinoResumo || '';
+  addCard({ ok:true, arquivo:label, cliente, codigo, tipo, url, pdf, wa: waLink(soDocLink(tipo) ? pdf : url, cliente, tel, destino) });
+}
 
 $('go').addEventListener('click', async () => {
   if (!files.length) return;

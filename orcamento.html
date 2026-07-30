@@ -578,7 +578,8 @@ function render(){
       car.querySelector('.track').style.transform=`translateX(-${window._ci[idx]*100}%)`;
       dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci[idx]));
     }));
-    if(dots.length>1) setInterval(()=>window.slide(1,idx),5000);
+    if(dots.length>1){ const CARROSSEL_MS=6000; // tempo de troca das fotos do hotel (ms)
+      setInterval(()=>window.slide(1,idx),CARROSSEL_MS); }
   });
 
   // leaflet maps (rota ida/volta + localização do hotel) com mapa real
@@ -758,7 +759,7 @@ async function loadHotelbeds(){
     if(d.address)D.hotel.endereco=d.address+(d.city?(' · '+d.city):'');
     if(d.stars)D.hotel.estrelas=d.stars;
     if(d.coordinates&&d.coordinates.lat)D.hotel.geo={lat:+d.coordinates.lat,lon:+d.coordinates.lon};
-    if(d.images&&d.images.length)D.hero.imagem=d.images[0]; // capa = foto principal real do destino
+    if(d.images&&d.images.length&&!D.fotoEscolhida)D.hero.imagem=d.images[0];
     D.hotel.fotosFonte="Fotos e localização em tempo real · Hotelbeds Content API";
     renderAll();
   }catch(e){console.warn('Hotelbeds:',e);}
@@ -794,11 +795,14 @@ loadHotelInfo();
 // Foto turística da cidade/destino na capa (Unsplash via backend)
 async function loadCityPhoto(){
   if(_ENXUTO)return; // só-voo não usa foto de cidade
+  if(D.fotoEscolhida&&D.hero&&D.hero.imagem)return; // foto escolhida manualmente no extrator
   const dest=D.destinoBusca || (D.resumo&&(D.resumo.find(x=>x.k==='Destino')||{}).v) || D.destinoResumo || (D.hero&&D.hero.titulo) || '';
   if(!dest)return;
+  // alternativas: país (bom para roteiros com várias cidades no exterior) e o destino resumido
+  const alts=[D.pais, D.destinoMensagem, (D.destinoResumo||'').split(',')[0]].filter(Boolean).join(',');
   try{
     const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,'');
-    const r=await fetch(base+'/api/city-photo?q='+encodeURIComponent(dest));
+    const r=await fetch(base+'/api/city-photo?q='+encodeURIComponent(dest)+(alts?'&alt='+encodeURIComponent(alts):''));
     if(!r.ok)return; const d=await r.json();
     if(d.imagem){ D.hero.imagem=d.imagem; render(); }
   }catch(e){console.warn('city-photo:',e);}

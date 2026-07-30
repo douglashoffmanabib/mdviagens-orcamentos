@@ -77,6 +77,10 @@
           <input id="f_titular" placeholder="Titular">
           <input id="f_dataReserva" placeholder="Data da reserva (DD/MM/AAAA)">
         </div>
+        <label style="display:flex;align-items:center;gap:10px;margin-top:12px;cursor:pointer;font-size:15px">
+          <input type="checkbox" id="f_grupo" style="width:auto"> Reserva de GRUPO
+          <span style="color:var(--muted);font-size:13px">(adiciona o aviso de check-in no balcão e 3h de antecedência)</span>
+        </label>
         <div style="margin-top:12px">
           <textarea id="f_passageiros" placeholder="Passageiros (um por linha: NOME; nascimento; documento)"></textarea>
         </div>
@@ -208,6 +212,7 @@ function lerForm(){
   return {
     localizador: val('f_localizador'), localizadorExterno: val('f_localizadorExterno'),
     status: val('f_status') || 'Confirmado', titular: val('f_titular'), dataReserva: val('f_dataReserva'),
+    grupo: $('f_grupo').checked,
     passageiros, voos,
     hotel: alguma('h_nome') ? { nome:val('h_nome'), telefone:val('h_telefone'), endereco:val('h_endereco'),
       checkin:val('h_checkin'), horaCheckin:val('h_horaCheckin'), checkout:val('h_checkout'), horaCheckout:val('h_horaCheckout'),
@@ -227,6 +232,7 @@ function preencherForm(d){
   const set = (id, v) => { const e = $(id); if (e && v != null) e.value = v; };
   set('f_localizador', d.localizador); set('f_localizadorExterno', d.localizadorExterno);
   set('f_status', d.status); set('f_titular', d.titular); set('f_dataReserva', d.dataReserva);
+  $('f_grupo').checked = !!d.grupo;
   if (Array.isArray(d.passageiros)) set('f_passageiros', d.passageiros.map(p => [p.nome, p.nascimento, p.documento].filter(Boolean).join('; ')).join('\n'));
   $('voos').innerHTML = ''; (d.voos || []).forEach(v => addVoo(v));
   const h = d.hotel || {}; ['nome','telefone','endereco','checkin','horaCheckin','checkout','horaCheckout','noites','regime','acomodacao'].forEach(k => set('h_' + k, h[k]));
