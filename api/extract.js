@@ -28,6 +28,38 @@ const AIRPORTS = {
 };
 const iataCoords = (c) => AIRPORTS[(c||"").toUpperCase()] || null;
 
+// ---- Leitura tolerante do JSON devolvido pela IA (aceita texto em volta e conserta JSON cortado) ----
+function repairJson(s) {
+  let out = '', inStr = false, esc = false; const stack = [];
+  for (const ch of s) {
+    if (esc) { out += ch; esc = false; continue; }
+    if (inStr && ch === '\\') { out += ch; esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; out += ch; continue; }
+    if (!inStr) {
+      if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']');
+      else if (ch === '}' || ch === ']') stack.pop();
+    }
+    out += ch;
+  }
+  if (inStr) out += '"';
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(/\s+$/, '').replace(/,$/, '').replace(/"[^"]*"\s*:\s*$/, '').replace(/,$/, '');
+  } while (out !== prev);
+  while (stack.length) out += stack.pop();
+  return out;
+}
+function parseModelJson(text) {
+  let s = String(text || '').trim();
+  const i = s.indexOf('{'); if (i > 0) s = s.slice(i);
+  const j = s.lastIndexOf('}');
+  if (j > 0) { try { return JSON.parse(s.slice(0, j + 1)); } catch (e) {} }
+  try { return JSON.parse(s); } catch (e) {}
+  try { return JSON.parse(repairJson(s)); } catch (e) {}
+  return null;
+}
+
 const SCHEMA_PROMPT = `Você é um extrator de orçamentos de viagem. Recebe um PDF (imagem) de um orçamento de agência e devolve APENAS um JSON válido, sem comentários nem texto fora do JSON.
 
 Extraia fielmente o que estiver no documento. Use null quando não houver a informação. NÃO invente dados.
@@ -37,7 +69,8 @@ Formato exato do JSON:
   "numero": "string (número do orçamento, ex: 4383884)",
   "cliente": { "nome": "string (nome do cliente/passageiro do título)", "telefone": "telefone do cliente se aparecer no documento (ex: (31) 99999-9999), senão null" },
   "destinoResumo": "string (cidade/UF principal do destino)",
-  "destinoBusca": "termo curto (2-4 palavras) para buscar uma FOTO turística bonita do destino num banco de imagens. Inclua o traço mais ICÔNICO do lugar: praia, montanha, serra, cidade, natureza, cachoeira, etc. Ex.: 'Porto Seguro praia', 'Gramado inverno', 'Bonito natureza', 'Bogotá cidade', 'Foz do Iguaçu cataratas'",
+  "pais": "país do destino (ex.: Brasil, Colômbia, Portugal)",
+  "destinoBusca": "termo curto (2-3 palavras) de UM ÚNICO lugar para buscar uma FOTO turística no banco de imagens. REGRAS: (a) viagem para UMA cidade -> use a cidade + o traço icônico, ex.: 'Porto Seguro praia', 'Gramado inverno', 'Foz do Iguaçu cataratas'; (b) viagem por VÁRIAS cidades no EXTERIOR -> use o PAÍS, ex.: 'Colômbia paisagem', 'Portugal paisagem'; (c) viagem por VÁRIAS cidades no BRASIL -> use a cidade principal ou a região, ex.: 'Bahia praia', 'Serra Gaúcha'. NUNCA junte duas cidades no mesmo termo.",
   "destinoMensagem": "nome do destino para a mensagem de WhatsApp: a CIDADE quando for no Brasil; o PAÍS quando for fora do Brasil (ex.: 'Porto Seguro', 'Gramado', 'Colômbia', 'Portugal')",
   "voos": [
     {
@@ -134,8 +167,11 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 4000,
-        messages: [{ role: 'user', content }]
+        max_tokens: 12000,
+        messages: [
+          { role: 'user', content },
+          { role: 'assistant', content: '{' }   // força a resposta a começar já no JSON
+        ]
       })
     });
 
@@ -145,11 +181,15 @@ module.exports = async (req, res) => {
     }
 
     const out = await r.json();
-    const text = (out.content || []).map(b => b.text || '').join('');
-    const jsonStr = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-    let d;
-    try { d = JSON.parse(jsonStr); }
-    catch { return res.status(502).json({ error: 'Não consegui interpretar o JSON do modelo', raw: text.slice(0, 800) }); }
+    const text = '{' + (out.content || []).map(b => b.text || '').join('');
+    const d = parseModelJson(text);
+    if (!d) {
+      return res.status(502).json({
+        error: 'Não consegui interpretar o JSON do modelo',
+        detail: 'stop_reason=' + (out.stop_reason || '?') + ' | fim: ' + text.slice(-200),
+        raw: text.slice(0, 800)
+      });
+    }
 
     // Pós-processamento: monta o objeto no formato final do template.
     const data = enrich(d);
@@ -217,6 +257,7 @@ function enrich(d) {
     agente: AGENTE_FIXO,
     cliente: d.cliente || { nome: '' },
     destinoResumo: d.destinoResumo || '',
+    pais: d.pais || '',
     destinoBusca: d.destinoBusca || d.destinoResumo || '',
     destinoMensagem: d.destinoMensagem || (d.destinoResumo || '').split(',')[0].trim(),
     hero: {
