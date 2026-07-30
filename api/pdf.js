@@ -70,9 +70,13 @@ module.exports = async (req, res) => {
   const jobs = {};
   if (!soVoo) {
     const destQ = d.destinoBusca || d.destinoResumo || '';
-    if (destQ) jobs.city = (async () => {
+    const alts = [d.pais, d.destinoMensagem, (d.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
+    // foto escolhida manualmente no extrator tem prioridade sobre a busca automática
+    if (d.hero && d.hero.imagem && /^https?:/.test(d.hero.imagem)) {
+      jobs.city = fetchBytes(d.hero.imagem, 7000);
+    } else if (destQ) jobs.city = (async () => {
       try {
-        const r = await fetch(host + '/api/city-photo?q=' + encodeURIComponent(destQ));
+        const r = await fetch(host + '/api/city-photo?q=' + encodeURIComponent(destQ) + (alts ? '&alt=' + encodeURIComponent(alts) : ''));
         if (!r.ok) return null; const j = await r.json();
         return j.imagem ? await fetchBytes(j.imagem, 7000) : null;
       } catch (e) { return null; }

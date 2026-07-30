@@ -43,6 +43,7 @@ Extraia fielmente. Use null quando não houver. NÃO invente dados.
   "status": "ex: Confirmado / OK",
   "dataReserva": "DD/MM/AAAA",
   "titular": "nome do cliente titular",
+  "grupo": true|false (true quando o documento indicar que é RESERVA DE GRUPO — ex.: "grupo", "reserva de grupo", "bloqueio de grupo"),
   "passageiros": [ { "nome": "NOME COMPLETO", "nascimento": "DD/MM/AAAA ou null", "documento": "CPF/RG ou null" } ],
   "voos": [
     {
