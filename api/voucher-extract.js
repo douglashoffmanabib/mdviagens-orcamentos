@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           model,
           max_tokens: mt,
-          messages: [{ role: 'user', content }, { role: 'assistant', content: '{' }]
+          messages: [{ role: 'user', content }]
         })
       });
       if (r.ok) { out = await r.json(); break; }
@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
     }
     if (!out) return res.status(502).json({ error: 'Erro na IA', detail: ultimoErro });
 
-    const text = '{' + (out.content || []).map(b => b.text || '').join('');
+    const text = (out.content || []).map(b => b.text || '').join('');
     const d = parseModelJson(text);
     if (!d) return res.status(502).json({ error: 'JSON inválido', detail: 'stop_reason=' + (out.stop_reason || '?') + ' | fim: ' + text.slice(-200), raw: text.slice(0, 600) });
 

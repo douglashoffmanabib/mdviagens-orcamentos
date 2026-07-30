@@ -172,10 +172,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           model,
           max_tokens: mt,
-          messages: [
-            { role: 'user', content },
-            { role: 'assistant', content: '{' }   // força a resposta a começar já no JSON
-          ]
+          messages: [{ role: 'user', content }]
         })
       });
       if (r.ok) { out = await r.json(); break; }
@@ -187,7 +184,7 @@ module.exports = async (req, res) => {
     }
     if (!out) return res.status(502).json({ error: 'Erro na API Anthropic', detail: ultimoErro });
 
-    const text = '{' + (out.content || []).map(b => b.text || '').join('');
+    const text = (out.content || []).map(b => b.text || '').join('');
     const d = parseModelJson(text);
     if (!d) {
       return res.status(502).json({
