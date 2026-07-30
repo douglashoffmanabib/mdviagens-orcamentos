@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acesso · MD Viagens</title>
+<style>
+  :root{ --navy:#16264a; --navy2:#1f3460; --gold:#c3a063; --ink:#e9ecf1; --muted:#9aa3b0; --bg:#141618; --card:#1c1f23; --line:#2a2f36; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:18px; padding:44px 40px; width:100%; max-width:400px; margin:20px; text-align:center; }
+  .card img{ height:74px; margin-bottom:18px; }
+  h1{ font-size:20px; margin:0 0 6px; letter-spacing:.04em; }
+  p{ color:var(--muted); margin:0 0 24px; font-size:14px; }
+  input{ width:100%; background:#2a2e33; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:15px 16px; font-size:20px; text-align:center; letter-spacing:.35em; }
+  input::placeholder{ letter-spacing:normal; font-size:15px; color:#8a9099; }
+  button{ width:100%; margin-top:14px; background:var(--navy2); color:#fff; border:0; border-radius:999px; padding:15px; font-size:16px; font-weight:700; cursor:pointer; }
+  button:hover{ background:#25407a; }
+  .err{ color:#ff9d9d; font-size:14px; margin-top:12px; min-height:18px; font-weight:600; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img src="/img/logo-md.jpg" alt="MD Viagens">
+    <h1>ÁREA DA EQUIPE</h1>
+    <p>Digite a senha para entrar</p>
+    <form id="f">
+      <input id="senha" type="password" inputmode="numeric" placeholder="Senha" autofocus autocomplete="current-password">
+      <button type="submit">Entrar</button>
+    </form>
+    <div class="err" id="err"></div>
+  </div>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('err');
+  err.textContent = '';
+  try{
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ senha: document.getElementById('senha').value.trim() })
+    });
+    if (r.ok) { location.href = '/'; }
+    else {
+      const j = await r.json().catch(() => ({}));
+      err.textContent = j.error || 'Senha incorreta.';
+      document.getElementById('senha').value = '';
+      document.getElementById('senha').focus();
+    }
+  } catch(ex){ err.textContent = 'Falha na conexão. Tente de novo.'; }
+});
+</script>
+</body>
+</html>
