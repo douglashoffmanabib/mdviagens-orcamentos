@@ -25,6 +25,15 @@
   .campos{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
   .campos input{ flex:1 1 240px; background:#2a2e33; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:14px 16px; font-size:15px; }
   .campos input::placeholder{ color:#8a9099; }
+  .extrasBox{ border:1px solid var(--line); border-radius:12px; padding:16px 18px 18px; margin-bottom:18px; }
+  .extrasTitulo{ color:var(--gold); font-weight:700; margin-bottom:4px; }
+  .extrasHint{ color:var(--muted); font-size:13px; margin-bottom:12px; }
+  .extraRow{ display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:start; margin-bottom:10px; }
+  .extraRow input, .extraRow textarea{ background:#2a2e33; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
+  .extraRow textarea{ min-height:42px; resize:vertical; }
+  .extraDel{ background:#3a1d1d; border:1px solid #5d2b2b; color:#ffb4b4; border-radius:10px; padding:0 14px; font-size:13px; font-weight:600; cursor:pointer; height:100%; }
+  .addExtraBtn{ background:#2c3138; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:9px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+  @media(max-width:640px){ .extraRow{ grid-template-columns:1fr; } .extraDel{ height:auto; padding:9px; } }
   button.go{ background:var(--navy2); color:#fff; border:0; border-radius:999px; padding:15px 34px; font-size:17px; font-weight:700; cursor:pointer; }
   button.go:disabled{ opacity:.5; cursor:default; }
   .status{ margin:18px 0 6px; font-weight:700; }
@@ -78,6 +87,13 @@
       <input id="cliTel" placeholder="WhatsApp do cliente (opcional)">
     </div>
 
+    <div class="extrasBox">
+      <div class="extrasTitulo">Passeios / Extras inclusos (opcional)</div>
+      <div class="extrasHint">A IA já tenta puxar automaticamente os passeios ou extras que estiverem inclusos no orçamento. Use os campos abaixo para adicionar manualmente ou complementar.</div>
+      <div id="extrasList"></div>
+      <button type="button" class="addExtraBtn" id="addExtra">+ Adicionar extra</button>
+    </div>
+
     <button class="go" id="go" disabled>Extrair e gerar links</button>
 
     <div class="status" id="status"></div>
@@ -107,6 +123,25 @@ function waLink(url, cliente, tel, destino){
   let num = String(tel || '').replace(/\D/g, '');
   if (num && num.length <= 11) num = '55' + num;
   return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+}
+
+// ---------- Extras manuais ----------
+let extraSeq = 0;
+function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function addExtraRow(titulo, descricao){
+  const id = 'ex' + (extraSeq++);
+  $('extrasList').insertAdjacentHTML('beforeend', `<div class="extraRow" id="${id}">
+    <input class="extraTitulo" placeholder="Título (ex: City Tour, Ingresso Cristo Redentor)" value="${escapeHtml(titulo)}">
+    <textarea class="extraDesc" placeholder="Descreva o que está incluso">${escapeHtml(descricao)}</textarea>
+    <button type="button" class="extraDel" onclick="document.getElementById('${id}').remove()">Remover</button>
+  </div>`);
+}
+$('addExtra').addEventListener('click', () => addExtraRow('', ''));
+function extrasManuais(){
+  return [...document.querySelectorAll('.extraRow')].map(row => ({
+    titulo: (row.querySelector('.extraTitulo').value || '').trim(),
+    descricao: (row.querySelector('.extraDesc').value || '').trim()
+  })).filter(e => e.titulo || e.descricao);
 }
 
 function addCard(r){
@@ -139,6 +174,10 @@ async function gerar(arquivos, label){
     const cn = ($('cliNome').value || '').trim();
     const ct = ($('cliTel').value || '').trim();
     if (cn || ct) { j.data.cliente = j.data.cliente || {}; if (cn) j.data.cliente.nome = cn; if (ct) j.data.cliente.telefone = ct; }
+
+    // extras digitados manualmente na tela entram junto com os que a IA já encontrou no documento
+    const manual = extrasManuais();
+    if (manual.length) { j.data.extras = [...(Array.isArray(j.data.extras) ? j.data.extras : []), ...manual]; }
 
     // pacote/hotel: oferecer as 5 fotos do destino para escolher a capa
     const temHotel = (Array.isArray(j.data.hoteis) && j.data.hoteis.length) || (j.data.hotel && j.data.hotel.nome);
