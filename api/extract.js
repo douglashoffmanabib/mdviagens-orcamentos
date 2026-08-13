@@ -105,9 +105,9 @@ Formato exato do JSON:
       "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
     }
   ],
-  "transfer": null | { "tipo": "string (ex: Privativo, Compartilhado, Regular)", "trajeto": "string (ex: Aeroporto -> Hotel e Hotel -> Aeroporto)", "detalhe": "observações do transfer se houver, senão null" },
+  "transfer": null | { "tipo": "string (ex: Privativo, Compartilhado, Regular)", "trajeto": "string (ex: Aeroporto -> Hotel, Hotel -> Aeroporto, ou os dois se houver IN e OUT)", "detalhe": "resumo do transfer — pode incluir a data, ex: 'Saída do hotel para o aeroporto em 10/11/2026, compartilhado'" },
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
-  "extras": [ { "titulo": "string curto (ex: Passeio Cristo Redentor, City Tour, Ingresso Parque X)", "descricao": "o que está incluso nesse item, em uma frase" } ],
+  "extras": [ { "titulo": "string curto (ex: Passeio à Praia de Genipabu, City Tour, Ingresso Parque X)", "descricao": "o que está incluso, pode citar a data do passeio, ex: 'Dia 07/11/2026 — transporte incluso para a praia de Genipabu'" } ],
   "valores": {
     "totalNum": número (ex: 6906.51),
     "taxasInclusas": true|false,
@@ -119,8 +119,12 @@ Formato exato do JSON:
 
 Regras:
 - "hoteis" é SEMPRE uma lista. Se a viagem tiver MAIS DE UM hotel (roteiros por várias cidades), inclua TODOS, um item por hotel, na ordem cronológica, preenchendo "cidade". Se não houver hotel, use [].
-- "transfer" NÃO deve ficar null por padrão — leia o documento com atenção. Se o orçamento mencionar transfer incluso (privativo, compartilhado, regular, "aeroporto-hotel", "traslado", etc.), preencha o objeto com o que estiver disponível. Só use null quando o documento realmente não incluir transfer nenhum.
-- "extras" deve conter APENAS passeios, ingressos, atividades, city tours ou outros itens que estejam EXPLICITAMENTE INCLUSOS no orçamento (ex.: "passeio X incluso", "com ingresso para Y", "city tour incluído"). NÃO liste itens opcionais, sugeridos, à venda separadamente ou "consulte disponibilidade" — esses NÃO entram em "extras". Se não houver nenhum item incluso desse tipo, use [].
+- ATENÇÃO — documentos de agências/operadoras brasileiras costumam rotular tanto o transfer quanto os passeios com o MESMO cabeçalho genérico "RECEPTIVO". NÃO decida pelo rótulo da seção — decida pelo CONTEÚDO/TÍTULO específico do item:
+  - Se o item falar em transporte entre AEROPORTO e HOTEL (títulos como "TRANSFER IN", "TRANSFER OUT", "TRASLADO", "SAÍDA DO HOTEL PARA O AEROPORTO", "CHEGADA DO AEROPORTO PARA O HOTEL"), isso é TRANSFER — preencha o campo "transfer" (nunca o "extras").
+  - Se o item falar em PASSEIO, EXCURSÃO, CITY TOUR, TOUR, INGRESSO, visita a uma praia/parque/atração turística (títulos como "PASSEIO À PRAIA DE X", "CITY TOUR", "INGRESSO PARQUE Y"), isso é um item de "extras" — NUNCA preencha como transfer.
+  - Um mesmo orçamento pode ter os dois ao mesmo tempo (ex.: um transfer aeroporto-hotel E um passeio à parte, cada um em sua seção própria mesmo com o mesmo cabeçalho "RECEPTIVO"). Extraia cada item na seção certa, sem misturar.
+- "transfer" NÃO deve ficar null por padrão — leia o documento com atenção usando a regra acima. Só use null quando o documento realmente não incluir nenhum transfer/traslado aeroporto-hotel.
+- "extras" deve conter APENAS passeios, ingressos, atividades ou tours que estejam EXPLICITAMENTE INCLUSOS no orçamento. NÃO liste itens opcionais, sugeridos, à venda separadamente ou marcados como "NÃO INCLUI" — esses NÃO entram em "extras". Se não houver nenhum item incluso desse tipo, use [].
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
