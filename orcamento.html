@@ -456,6 +456,8 @@ function render(){
   if(temHotel) nav.push(["#hotel","Hotel"]);
   if(!enxuto){ nav.push(["#transfer","Transfer"]); nav.push(["#seguro","Seguro"]); }
   if(temMapa) nav.push(["#mapas","Mapas"]);
+  const temExtras=Array.isArray(D.extras)&&D.extras.length>0;
+  if(temExtras) nav.push(["#extras","Passeios e Extras"]);
   nav.push(["#valores","Investimento"],["#contato","Contato"],["#porque","Diferenciais"],["#quemsomos","Quem somos"]);
 
   document.getElementById('app').innerHTML=`
@@ -500,6 +502,10 @@ function render(){
       ${D.seguro
         ?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p></div></div>`
         :`<div class="card trf"><span class="ic2">🛡️</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
+    </section>`:''}
+
+    ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">🎟️</span><h2>Passeios e Extras Inclusos</h2></div>
+      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}
     </section>`:''}
 
     ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapas</h2></div>
@@ -561,8 +567,16 @@ function render(){
     </div></div>
   <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>`;
 
-  // carrossel: um por hotel
-  window._ci={};
+  // nav highlight
+  const links=[...document.querySelectorAll('.menu a.link')];
+  const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=links.find(l=>l.getAttribute('href')==='#'+e.target.id);if(a)a.classList.add('active');}}),{rootMargin:'-40% 0px -55% 0px'});
+  nav.map(x=>x[0].slice(1)).forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+}
+
+// Carrossel de fotos do hotel — usado no orçamento completo e na cotação só de hospedagem.
+window._carouselTimers = window._carouselTimers || {};
+function initCarousels(){
+  window._ci=window._ci||{};
   window.slide=(dir,idx)=>{
     const car=document.getElementById('carousel'+(idx||0)); if(!car)return;
     const tr=car.querySelector('.track'), dots=[...car.querySelectorAll('.dots i')], n=dots.length||1;
@@ -578,45 +592,42 @@ function render(){
       car.querySelector('.track').style.transform=`translateX(-${window._ci[idx]*100}%)`;
       dots.forEach((y,i)=>y.classList.toggle('on',i===window._ci[idx]));
     }));
+    // a página pode re-renderizar (fotos/mapas chegando aos poucos); sem isto, cada
+    // re-render somava um novo intervalo e o carrossel acabava passando cada vez mais rápido.
+    if(window._carouselTimers[idx]) clearInterval(window._carouselTimers[idx]);
     if(dots.length>1){ const CARROSSEL_MS=6000; // tempo de troca das fotos do hotel (ms)
-      setInterval(()=>window.slide(1,idx),CARROSSEL_MS); }
+      window._carouselTimers[idx]=setInterval(()=>window.slide(1,idx),CARROSSEL_MS); }
   });
+}
 
-  // leaflet maps (rota ida/volta + localização do hotel) com mapa real
-  function initMaps(){
-    const OSM=()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18});
-    function routeMap(id,pts,color){
-      const el=document.getElementById(id); if(!el)return;
-      const m=L.map(id,{zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,attributionControl:false});
-      OSM().addTo(m);
-      const ll=pts.map(p=>[p.lat,p.lon]);
-      L.polyline(ll,{color,weight:3,dashArray:'6 6'}).addTo(m);
-      pts.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
-      m.fitBounds(ll,{padding:[36,36]});
-    }
-    if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
-    if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#a8863f');
-
-    // Localização real de cada hotel
-    D.hoteis.forEach((h,i)=>{
-      const el=document.getElementById('hotelmap'+i); if(!el)return;
-      const show=(lat,lon)=>{ const hm=L.map('hotelmap'+i,{scrollWheelZoom:false}).setView([lat,lon],15);
-        OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(h.nome).openPopup(); };
-      const g=h.geo;
-      if(g && g.lat && g.lon){ show(g.lat,g.lon); return; }
-      el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localizando o hotel…</div>';
-      fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent((h.nome||'')+', '+(h.endereco||''))}`)
-        .then(r=>r.json()).then(a=>{ if(a&&a[0]){ el.innerHTML=''; show(+a[0].lat,+a[0].lon); }
-          else{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localização indisponível.</div>'; } })
-        .catch(()=>{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível carregar o mapa.</div>'; });
-    });
+// leaflet maps (rota ida/volta + localização do hotel) com mapa real — orçamento completo e cotação só de hotel.
+function initMaps(){
+  const OSM=()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18});
+  function routeMap(id,pts,color){
+    const el=document.getElementById(id); if(!el)return;
+    const m=L.map(id,{zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,attributionControl:false});
+    OSM().addTo(m);
+    const ll=pts.map(p=>[p.lat,p.lon]);
+    L.polyline(ll,{color,weight:3,dashArray:'6 6'}).addTo(m);
+    pts.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
+    m.fitBounds(ll,{padding:[36,36]});
   }
-  if(window.L){initMaps();}else{window.addEventListener('load',initMaps);}
+  if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
+  if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#a8863f');
 
-  // nav highlight
-  const links=[...document.querySelectorAll('.menu a.link')];
-  const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=links.find(l=>l.getAttribute('href')==='#'+e.target.id);if(a)a.classList.add('active');}}),{rootMargin:'-40% 0px -55% 0px'});
-  nav.map(x=>x[0].slice(1)).forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
+  // Localização real de cada hotel
+  (D.hoteis||[]).forEach((h,i)=>{
+    const el=document.getElementById('hotelmap'+i); if(!el)return;
+    const show=(lat,lon)=>{ const hm=L.map('hotelmap'+i,{scrollWheelZoom:false}).setView([lat,lon],15);
+      OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(h.nome).openPopup(); };
+    const g=h.geo;
+    if(g && g.lat && g.lon){ show(g.lat,g.lon); return; }
+    el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localizando o hotel…</div>';
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent((h.nome||'')+', '+(h.endereco||''))}`)
+      .then(r=>r.json()).then(a=>{ if(a&&a[0]){ el.innerHTML=''; show(+a[0].lat,+a[0].lon); }
+        else{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localização indisponível.</div>'; } })
+      .catch(()=>{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível carregar o mapa.</div>'; });
+  });
 }
 // ===== Cotação de Voos (documento) — usada quando é só aéreo =====
 function dataExt(s){const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(s||'');if(!m)return s||'';const d=new Date(+m[3],+m[2]-1,+m[1]);const wd=['dom','seg','ter','qua','qui','sex','sáb'][d.getDay()];return `${wd}, ${s}`;}
@@ -677,10 +688,26 @@ function baixarPdf(){
 
 // ===== Cotação de Hospedagem (documento) — usada quando é só hotel =====
 function renderHotel(){
-  const h=D.hotel||{}; const v=D.valores||{};
+  const v=D.valores||{};
   const pad=n=>String(n).padStart(2,'0');
-  const fotos=(h.fotos||[]).slice(0,4).map(s=>`<img src="${s}" alt="${h.nome}">`).join('');
-  const q=(h.quartos||[]).map(x=>`<tr><td>${x.nome||''}</td><td>${x.ocupacao||''}</td><td>${x.plano||''}</td><td>${x.restricao||''}</td></tr>`).join('');
+  const hoteis=(D.hoteis&&D.hoteis.length)?D.hoteis:((D.hotel&&D.hotel.nome)?[D.hotel]:[]);
+  // resumo (check-in/checkout/noites/avaliação) por hotel — garantido mesmo quando "cidade" não vem preenchida
+  const resumos=hoteis.map(h=>{
+    const av=(h.tripadvisor&&h.tripadvisor.nota)?Number(h.tripadvisor.nota).toFixed(1)+' / 5':'—';
+    return `<table class="vtable" style="margin-top:12px"><tbody>
+      <tr><th style="text-align:left">Check-in</th><td style="text-align:left">${h.checkin||''}</td><th style="text-align:left">Check-out</th><td style="text-align:left">${h.checkout||''}</td></tr>
+      <tr><th style="text-align:left">Noites</th><td style="text-align:left">${h.noites||''}</td><th style="text-align:left">Avaliação</th><td style="text-align:left">${av}</td></tr>
+    </tbody></table>`;
+  }).join('');
+  // carrossel de fotos reais + nome/estrelas/endereço/quartos/avaliações — mesmo componente do orçamento completo
+  const cards=hoteis.map((h,i)=>buildHotel(h,i)).join('');
+  // mapa com a localização real do hotel (sempre que houver geo/endereço)
+  const mapas = hoteis.some(h=>h.geo||h.endereco)
+    ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
+    : '';
+  const extras = (Array.isArray(D.extras)&&D.extras.length)
+    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}`
+    : '';
   let pag='';
   if(v.parcelas&&v.valorParcelaNum){
     pag = v.taxaUnicaNum
@@ -702,15 +729,11 @@ function renderHotel(){
           <div class="vsub">${[v.cotadoEm?('Data da cotação: '+v.cotadoEm):'', D.codigo||''].filter(Boolean).join(' &nbsp;•&nbsp; ')}</div>
         </div>
       </div>
-      ${fotos?`<div class="vfotos">${fotos}</div>`:''}
-      <h3 class="vsec">Hotel</h3>
-      <div class="vhotel-nome">${h.nome||''} ${h.estrelas?`<span class="stars">${stars(h.estrelas)}</span>`:''}</div>
-      <div class="vsub">${h.endereco||''}</div>
-      <table class="vtable" style="margin-top:12px"><tbody>
-        <tr><th style="text-align:left">Check-in</th><td style="text-align:left">${h.checkin||''}</td><th style="text-align:left">Check-out</th><td style="text-align:left">${h.checkout||''}</td></tr>
-        <tr><th style="text-align:left">Noites</th><td style="text-align:left">${h.noites||''}</td><th style="text-align:left">Avaliação</th><td style="text-align:left">${(h.tripadvisor&&h.tripadvisor.nota)?Number(h.tripadvisor.nota).toFixed(1)+' / 5':'—'}</td></tr>
-      </tbody></table>
-      ${q?`<h3 class="vsec">Acomodação</h3><table class="vtable"><thead><tr><th>Quarto</th><th>Ocupação</th><th>Plano</th><th>Restrições</th></tr></thead><tbody>${q}</tbody></table>`:''}
+      <h3 class="vsec">Hotel${hoteis.length>1?`s (${hoteis.length})`:''}</h3>
+      ${resumos}
+      ${cards}
+      ${mapas}
+      ${extras}
       <h3 class="vsec">Forma de Investimento</h3>
       <div class="vpay">${pag}<div class="vpay-t">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div></div>
       <div class="mod-box">
@@ -742,6 +765,8 @@ function renderAll(){
   if(_TIPO==='voo') renderVoo();
   else if(_TIPO==='hotel') renderHotel();
   else render();
+  initCarousels();
+  if(window.L){initMaps();}else{window.addEventListener('load',initMaps);}
 }
 renderAll();
 
