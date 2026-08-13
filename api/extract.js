@@ -105,8 +105,9 @@ Formato exato do JSON:
       "tripadvisor": { "nota": número|null, "avaliacoes": número|null }
     }
   ],
-  "transfer": null,
+  "transfer": null | { "tipo": "string (ex: Privativo, Compartilhado, Regular)", "trajeto": "string (ex: Aeroporto -> Hotel e Hotel -> Aeroporto)", "detalhe": "observações do transfer se houver, senão null" },
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
+  "extras": [ { "titulo": "string curto (ex: Passeio Cristo Redentor, City Tour, Ingresso Parque X)", "descricao": "o que está incluso nesse item, em uma frase" } ],
   "valores": {
     "totalNum": número (ex: 6906.51),
     "taxasInclusas": true|false,
@@ -118,6 +119,8 @@ Formato exato do JSON:
 
 Regras:
 - "hoteis" é SEMPRE uma lista. Se a viagem tiver MAIS DE UM hotel (roteiros por várias cidades), inclua TODOS, um item por hotel, na ordem cronológica, preenchendo "cidade". Se não houver hotel, use [].
+- "transfer" NÃO deve ficar null por padrão — leia o documento com atenção. Se o orçamento mencionar transfer incluso (privativo, compartilhado, regular, "aeroporto-hotel", "traslado", etc.), preencha o objeto com o que estiver disponível. Só use null quando o documento realmente não incluir transfer nenhum.
+- "extras" deve conter APENAS passeios, ingressos, atividades, city tours ou outros itens que estejam EXPLICITAMENTE INCLUSOS no orçamento (ex.: "passeio X incluso", "com ingresso para Y", "city tour incluído"). NÃO liste itens opcionais, sugeridos, à venda separadamente ou "consulte disponibilidade" — esses NÃO entram em "extras". Se não houver nenhum item incluso desse tipo, use [].
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
@@ -153,7 +156,7 @@ module.exports = async (req, res) => {
     return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } };
   });
   const merge = arquivos.length > 1
-    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, seguro, etc. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente.'
+    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, transfer, seguro e extras. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente.'
     : '';
   content.push({ type: 'text', text: SCHEMA_PROMPT + merge });
 
@@ -265,6 +268,11 @@ function enrich(d) {
   const hoje = new Date().toLocaleDateString('pt-BR');
   const destino = d.destinoResumo || primeiro.cidade || primeiro.nome || 'Sua viagem';
 
+  // extras/passeios inclusos — só entram os que vieram com título ou descrição preenchidos
+  const extras = Array.isArray(d.extras)
+    ? d.extras.filter(e => e && (e.titulo || e.descricao)).map(e => ({ titulo: e.titulo || '', descricao: e.descricao || '' }))
+    : [];
+
   return {
     numero: d.numero || '',
     agencia: { nome: 'MD Viagens · Milhas e Destinos' },
@@ -293,6 +301,7 @@ function enrich(d) {
     hotel: hoteis[0] || null,
     transfer: d.transfer || null,
     seguro: d.seguro || null,
+    extras,
     valores: {
       totalNum: (d.valores && d.valores.totalNum) || 0,
       taxasInclusas: !!(d.valores && d.valores.taxasInclusas),

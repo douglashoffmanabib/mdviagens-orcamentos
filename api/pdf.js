@@ -65,6 +65,7 @@ module.exports = async (req, res) => {
   const temVoo = !!(d.voos && d.voos.length);
   const soVoo = temVoo && !d.hoteis.length;
   const soHotel = !temVoo && d.hoteis.length > 0;
+  const extras = Array.isArray(d.extras) ? d.extras.filter(e => e && (e.titulo || e.descricao)) : [];
 
   // ---------- imagens em paralelo ----------
   const jobs = {};
@@ -288,6 +289,17 @@ module.exports = async (req, res) => {
       secTitle('Seguro viagem');
       const l = [d.seguro.nome, d.seguro.plano, d.seguro.periodo, d.seguro.viajantes].filter(Boolean).join('  ·  ');
       wrap(l, 9, H, CW).forEach(s => { ensure(12); txt(s, ML, y, 9, H, INK); y -= 12; }); y -= 6;
+    }
+
+    // ===== PASSEIOS E EXTRAS INCLUSOS =====
+    if (extras.length) {
+      secTitle('Passeios e Extras Inclusos');
+      extras.forEach(e => {
+        ensure(24);
+        if (e.titulo) { txt(e.titulo, ML, y, 10, B, INK); y -= 12; }
+        if (e.descricao) { wrap(e.descricao, 9, H, CW).forEach(s => { ensure(11); txt(s, ML, y, 9, H, MUTED); y -= 11; }); }
+        y -= 6;
+      });
     }
 
     // ===== INVESTIMENTO =====
