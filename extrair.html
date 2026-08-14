@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Extrator de Orçamentos · MD Viagens</title>
 <style>
-  :root{ --navy:#16264a; --navy2:#1f3460; --gold:#c3a063; --ink:#e9ecf1; --muted:#9aa3b0; --bg:#141618; --card:#1c1f23; --line:#2a2f36; --green:#25a35a; }
+  :root{ --navy:#0e1c42; --navy2:#16295c; --gold:#e0a52e; --ink:#f3f5fa; --muted:#9aa8c9; --bg:#0a1530; --card:#101f45; --line:#22335c; --green:#25d366; }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
   header{ background:var(--navy); display:flex; align-items:center; justify-content:space-between; padding:10px 22px; gap:16px; flex-wrap:wrap; }
@@ -17,43 +17,44 @@
   .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:30px; }
   h1{ margin:0 0 6px; font-size:30px; }
   .sub{ color:var(--muted); margin:0 0 22px; }
-  .drop{ border:2px dashed var(--gold); background:rgba(195,160,99,.07); border-radius:12px; padding:34px; text-align:center; cursor:pointer; font-size:17px; }
-  .drop:hover{ background:rgba(195,160,99,.12); }
+  .drop{ border:2px dashed var(--gold); background:rgba(224,165,46,.08); border-radius:12px; padding:34px; text-align:center; cursor:pointer; font-size:17px; }
+  .drop:hover{ background:rgba(224,165,46,.14); }
   .opts{ margin:18px 0 14px; display:flex; flex-direction:column; gap:8px; }
   .opts label{ display:flex; align-items:center; gap:10px; font-size:16px; cursor:pointer; }
   .opts small{ color:var(--muted); }
   .campos{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
-  .campos input{ flex:1 1 240px; background:#2a2e33; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:14px 16px; font-size:15px; }
-  .campos input::placeholder{ color:#8a9099; }
+  .campos input{ flex:1 1 240px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:14px 16px; font-size:15px; }
+  .campos input::placeholder{ color:#7d8bb0; }
   .extrasBox{ border:1px solid var(--line); border-radius:12px; padding:16px 18px 18px; margin-bottom:18px; }
   .extrasTitulo{ color:var(--gold); font-weight:700; margin-bottom:4px; }
   .extrasHint{ color:var(--muted); font-size:13px; margin-bottom:12px; }
   .extraRow{ display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:start; margin-bottom:10px; }
-  .extraRow input, .extraRow textarea{ background:#2a2e33; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
+  .extraRow input, .extraRow textarea{ background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
   .extraRow textarea{ min-height:42px; resize:vertical; }
   .extraDel{ background:#3a1d1d; border:1px solid #5d2b2b; color:#ffb4b4; border-radius:10px; padding:0 14px; font-size:13px; font-weight:600; cursor:pointer; height:100%; }
-  .addExtraBtn{ background:#2c3138; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:9px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+  .addExtraBtn{ background:#16295c; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:9px 18px; font-size:14px; font-weight:600; cursor:pointer; }
   @media(max-width:640px){ .extraRow{ grid-template-columns:1fr; } .extraDel{ height:auto; padding:9px; } }
   button.go{ background:var(--navy2); color:#fff; border:0; border-radius:999px; padding:15px 34px; font-size:17px; font-weight:700; cursor:pointer; }
   button.go:disabled{ opacity:.5; cursor:default; }
   .status{ margin:18px 0 6px; font-weight:700; }
-  .card-res{ background:#22262b; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .card-res{ background:#0e2050; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin-top:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
   .card-res.fail{ background:#3a1d1d; border-color:#5d2b2b; }
   .info{ flex:1 1 220px; }
   .cli{ font-weight:700; font-size:17px; }
   .meta{ color:var(--muted); font-size:13px; margin-top:3px; }
   .meta.err{ color:#ffb4b4; }
   .cod{ background:var(--gold); color:#1b1b1b; font-weight:700; border-radius:8px; padding:5px 10px; font-size:13px; }
-  .btn{ display:inline-block; text-decoration:none; border:1px solid var(--line); background:#2c3138; color:var(--ink); border-radius:999px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn{ display:inline-block; text-decoration:none; border:1px solid var(--line); background:#16295c; color:var(--ink); border-radius:999px; padding:9px 16px; font-size:14px; font-weight:600; cursor:pointer; }
   .btn.p{ background:var(--gold); color:#1b1b1b; border-color:var(--gold); }
   .btn.w{ background:var(--green); color:#fff; border-color:var(--green); }
   .fotoTitulo{ width:100%; font-weight:700; margin:4px 0 2px; }
   .fotoGrid{ width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
-  .fotoCard{ position:relative; border:3px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; aspect-ratio:16/10; background:#111; }
+  .fotoCard{ position:relative; border:3px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; aspect-ratio:16/10; background:#081128; }
   .fotoCard img{ width:100%; height:100%; object-fit:cover; display:block; }
   .fotoCard:hover{ border-color:var(--gold); }
-  .fotoCard.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(195,160,99,.4); }
+  .fotoCard.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(224,165,46,.4); }
   .fotoNum{ position:absolute; top:6px; left:6px; background:var(--gold); color:#1b1b1b; font-weight:800; font-size:13px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .fotoCat{ position:absolute; top:6px; right:6px; background:rgba(14,28,66,.85); border:1px solid rgba(224,165,46,.5); color:var(--gold); font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
   .fotoCred{ position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#ddd; font-size:10px; padding:2px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .fotoAcoes{ width:100%; display:flex; gap:10px; align-items:center; }
 </style>
@@ -68,50 +69,40 @@
     <a href="/historico.html">Histórico</a>
   </nav>
 </header>
-
 <div class="wrap">
   <div class="card">
     <h1>Extrator de Orçamentos</h1>
     <p class="sub">Selecione um ou <b>vários</b> arquivos (PDF ou imagem). Cada um vira um orçamento com link curto.</p>
-
     <div class="drop" id="drop"><span id="dropText">Clique e escolha os orçamentos</span></div>
     <input type="file" id="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp" style="display:none">
-
     <div class="opts">
       <label><input type="radio" name="modo" value="cada" checked> Um orçamento por arquivo</label>
       <label><input type="radio" name="modo" value="juntar"> Juntar os arquivos num orçamento só <small>(ex.: hotel + voo, ou ida + volta)</small></label>
     </div>
-
     <div class="campos">
       <input id="cliNome" placeholder="Nome do cliente">
       <input id="cliTel" placeholder="WhatsApp do cliente (opcional)">
     </div>
-
     <div class="extrasBox">
       <div class="extrasTitulo">Passeios / Extras inclusos (opcional)</div>
       <div class="extrasHint">A IA já tenta puxar automaticamente os passeios ou extras que estiverem inclusos no orçamento. Use os campos abaixo só se quiser adicionar manualmente ou complementar — se deixar em branco, nada é adicionado.</div>
       <div id="extrasList"></div>
       <button type="button" class="addExtraBtn" id="addExtra">+ Adicionar extra</button>
     </div>
-
     <button class="go" id="go" disabled>Extrair e gerar links</button>
-
     <div class="status" id="status"></div>
     <div id="res"></div>
   </div>
 </div>
-
 <script>
 const $ = id => document.getElementById(id);
 let files = [];
-
 $('drop').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', () => {
   files = [...$('file').files];
   $('dropText').textContent = files.length ? files.length + ' arquivo(s) selecionado(s)' : 'Clique e escolha os orçamentos';
   $('go').disabled = !files.length;
 });
-
 function toArq(f){
   return new Promise(r => { const rd = new FileReader();
     rd.onload = () => r({ data: rd.result.split(',')[1], mime: f.type || 'application/pdf' });
@@ -124,7 +115,6 @@ function waLink(url, cliente, tel, destino){
   if (num && num.length <= 11) num = '55' + num;
   return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
 }
-
 // ---------- Extras manuais ----------
 let extraSeq = 0;
 function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -143,7 +133,6 @@ function extrasManuais(){
     descricao: (row.querySelector('.extraDesc').value || '').trim()
   })).filter(e => e.titulo || e.descricao);
 }
-
 function addCard(r){
   const res = $('res');
   if (r.ok) {
@@ -164,22 +153,18 @@ function addCard(r){
       <div class="cli">Falhou: ${r.arquivo}</div><div class="meta err">${r.erro}</div></div></div>`);
   }
 }
-
 async function gerar(arquivos, label){
   try{
     const r = await fetch('/api/extract', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ arquivos }) });
     const j = await r.json();
     if (!r.ok) { addCard({ ok:false, arquivo:label, erro:(j.error || ('erro ' + r.status)) + (j.detail ? ' — ' + j.detail : '') }); return; }
-
     const cn = ($('cliNome').value || '').trim();
     const ct = ($('cliTel').value || '').trim();
     if (cn || ct) { j.data.cliente = j.data.cliente || {}; if (cn) j.data.cliente.nome = cn; if (ct) j.data.cliente.telefone = ct; }
-
     // extras digitados manualmente na tela entram junto com os que a IA já encontrou no documento
     const manual = extrasManuais();
     if (manual.length) { j.data.extras = [...(Array.isArray(j.data.extras) ? j.data.extras : []), ...manual]; }
-
-    // pacote/hotel: oferecer as 5 fotos do destino para escolher a capa
+    // pacote/hotel: oferecer as fotos do destino para escolher a capa
     const temHotel = (Array.isArray(j.data.hoteis) && j.data.hoteis.length) || (j.data.hotel && j.data.hotel.nome);
     if (temHotel && (j.data.destinoBusca || j.data.destinoResumo)) {
       const fotos = await buscarFotos(j.data);
@@ -191,25 +176,27 @@ async function gerar(arquivos, label){
   }
 }
 const soDocLink = t => t === 'AER' || t === 'HTL';
-
 async function buscarFotos(data){
   try{
-    const alts = [data.pais, data.destinoMensagem, (data.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
-    const r = await fetch('/api/city-photos?q=' + encodeURIComponent(data.destinoBusca || data.destinoResumo)
-      + (alts ? '&alt=' + encodeURIComponent(alts) : ''));
+    const alts = [data.destinoMensagem, (data.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
+    const params = new URLSearchParams();
+    params.set('q', data.destinoBusca || data.destinoResumo || '');
+    if (data.pais) params.set('pais', data.pais);
+    if (alts) params.set('alt', alts);
+    const r = await fetch('/api/city-photos?' + params.toString());
     if (!r.ok) return null;
     const j = await r.json();
     if (j.escolhida && j.fotos) j.fotos.forEach(f => { f.pre = (f.url === j.escolhida); });
     return j.fotos || null;
   } catch(e){ return null; }
 }
-
 let _esc = 0;
 function montarEscolha(data, label, fotos){
   const eid = 'esc' + (_esc++);
   const grid = fotos.map((f, i) => `
     <div class="fotoCard${f.pre ? ' sel' : ''}" id="${eid}_${i}" onclick="escolher('${eid}',${i})">
       <span class="fotoNum">${i + 1}</span>
+      ${f.categoriaLabel ? `<span class="fotoCat">${f.categoriaLabel}</span>` : ''}
       <img src="${f.thumb || f.url}" alt="Opção ${i + 1}">
       <div class="fotoCred">${f.credito || ''}</div>
     </div>`).join('');
@@ -237,7 +224,6 @@ async function confirmarFoto(eid, automatica){
   await finalizar(el._data, el._label, foto);
   el.remove();
 }
-
 async function finalizar(data, label, foto){
   if (foto) {
     data.hero = data.hero || {};
@@ -253,7 +239,6 @@ async function finalizar(data, label, foto){
     const sr = await fetch('/api/save', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ data }) });
     if (sr.ok) { const s = await sr.json(); id = s.id; codigo = s.codigo; tipo = s.tipo; }
   } catch(e){}
-
   let url, pdf;
   if (id) { url = location.origin + '/o/' + id; pdf = location.origin + '/api/pdf?id=' + encodeURIComponent(id); }
   else {
@@ -261,13 +246,11 @@ async function finalizar(data, label, foto){
     url = location.origin + '/orcamento.html#' + b; pdf = url;
   }
   if (!tipo && codigo) tipo = String(codigo).slice(0,3);
-
   const cliente = (data.cliente && data.cliente.nome) || '';
   const tel = (data.cliente && data.cliente.telefone) || ($('cliTel').value || '').trim();
   const destino = data.destinoMensagem || data.destinoResumo || '';
   addCard({ ok:true, arquivo:label, cliente, codigo, tipo, url, pdf, wa: waLink(soDocLink(tipo) ? pdf : url, cliente, tel, destino) });
 }
-
 $('go').addEventListener('click', async () => {
   if (!files.length) return;
   $('go').disabled = true; $('res').innerHTML = ''; $('status').textContent = 'Lendo os documentos…';
