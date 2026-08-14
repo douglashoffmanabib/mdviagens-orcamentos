@@ -47,7 +47,7 @@
 
   .sec-head h2,.topo-title .destino{font-family:'Poppins',sans-serif}
   .pdfbtn{position:fixed;bottom:20px;right:20px;z-index:2000;background:#e0a52e;color:#0e1c42;border:none;border-radius:30px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-  @media print{ .nav,.topo-row2{display:none!important} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
+  @media print{ .nav,.topo-row2,.pdfbtn{display:none!important} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
   /* ===== Cotação de Voos (só-voo, estilo documento) ===== */
   .vpage{background:#fff;min-height:100vh}
   .vbar{background:#0e1c42;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;font-weight:800;letter-spacing:.5px}
@@ -522,7 +522,7 @@ function render(){
     </section>
 
     <div id="informacoes">
-    ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapas</h2></div>
+    ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapa de Voo</h2></div>
       ${(D.mapaVoo&&D.mapaVoo.ida)?`<div class="map-split ${D.mapaVoo.volta?'two':'one'}">
         <div class="card mini"><div class="cap">🛫 Ida · ${D.mapaVoo.ida.rota}</div><div id="mapIda" class="minimap"></div></div>
         ${D.mapaVoo.volta?`<div class="card mini"><div class="cap">🛬 Volta · ${D.mapaVoo.volta.rota}</div><div id="mapVolta" class="minimap"></div></div>`:''}
@@ -622,6 +622,10 @@ function initMaps(){
     L.polyline(ll,{color,weight:3,dashArray:'6 6'}).addTo(m);
     pts.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
     m.fitBounds(ll,{padding:[36,36]});
+    // a seção pode estar dentro de um container que ainda não tinha o tamanho final
+    // no instante da criação do mapa (layout ainda assentando) — isso deixava o
+    // mapa cortado/deslocado. Forçamos o Leaflet a recalcular o tamanho depois.
+    setTimeout(()=>{ m.invalidateSize(); m.fitBounds(ll,{padding:[36,36]}); }, 300);
   }
   if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
   if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#c98f1e');
@@ -630,7 +634,8 @@ function initMaps(){
   (D.hoteis||[]).forEach((h,i)=>{
     const el=document.getElementById('hotelmap'+i); if(!el)return;
     const show=(lat,lon)=>{ const hm=L.map('hotelmap'+i,{scrollWheelZoom:false}).setView([lat,lon],15);
-      OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(h.nome).openPopup(); };
+      OSM().addTo(hm); L.marker([lat,lon]).addTo(hm).bindPopup(h.nome).openPopup();
+      setTimeout(()=>{ hm.invalidateSize(); hm.setView([lat,lon],15); }, 300); };
     const g=h.geo;
     if(g && g.lat && g.lon){ show(g.lat,g.lon); return; }
     el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localizando o hotel…</div>';
