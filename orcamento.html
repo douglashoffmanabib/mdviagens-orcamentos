@@ -31,18 +31,19 @@
   .topo-contato .wpp2{display:inline-flex;align-items:center;gap:7px;color:#fff;font-weight:700}
   .topo-contato .wpp2 svg{width:17px;height:17px;flex:0 0 auto}
   .topo-contato .sep{opacity:.4}
-  .cb-pdf{display:inline-flex;align-items:center;gap:9px;background:transparent;border:none;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;padding:0}
-  .cb-pdf .ic-baixar{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:.2s}
-  .cb-pdf:hover .ic-baixar{background:var(--gold);color:var(--navy)}
-  .topo-cadastur{display:flex;align-items:center;gap:9px}
+  .cb-pdf{display:inline-flex;align-items:center;gap:10px;background:var(--gold);border:none;color:var(--navy);font-size:13px;font-weight:800;letter-spacing:.2px;cursor:pointer;padding:9px 18px 9px 20px;border-radius:22px;transition:.2s}
+  .cb-pdf .ic-baixar{width:20px;height:20px;border-radius:50%;background:rgba(14,28,66,.15);color:var(--navy);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
+  .cb-pdf:hover{background:var(--gold-d);color:#fff}
+  .cb-pdf:hover .ic-baixar{background:rgba(255,255,255,.25);color:#fff}
+  .topo-cadastur{display:flex;align-items:center;gap:9px;margin-left:auto}
   .topo-cadastur img{height:24px;width:auto;flex:0 0 auto}
   .topo-cadastur span{color:#c9d3e2;font-size:11px;line-height:1.35;max-width:160px}
-  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.topo-cadastur{width:100%;justify-content:center}}
+  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.topo-cadastur{width:100%;justify-content:center;margin-left:0}}
 
-  /* NAV */
-  .nav{position:sticky;top:0;z-index:1200;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);border-top:1px solid rgba(255,255,255,.1)}
+  /* NAV — abaixo da foto, sobre o fundo claro da página */
+  .nav{position:sticky;top:0;z-index:1200;background:#fff;color:var(--navy);display:flex;align-items:center;padding:0 12px;box-shadow:0 2px 10px rgba(16,24,40,.08);border-bottom:1px solid var(--line)}
   .nav .menu{max-width:1100px;margin:0 auto;width:100%;display:flex;justify-content:center;overflow-x:auto}
-  .nav a.link{padding:12px 16px;font-size:13px;font-weight:500;opacity:.8;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+  .nav a.link{padding:14px 16px;font-size:13px;font-weight:600;color:var(--navy);opacity:.65;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
   .nav a.link:hover,.nav a.link.active{opacity:1;border-color:var(--gold)}
 
   /* BANNER DA VIAGEM — foto de capa em largura total, logo abaixo do menu */
@@ -162,11 +163,9 @@
   .ins h4{color:var(--navy);font-size:15px}.ins p{font-size:13px;color:var(--muted)}
   .tiny{font-size:11.5px;color:var(--muted);line-height:1.55}
   .disclaimer-item{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.5}
-  .retirar-box{padding:16px 18px;font-size:13px;color:var(--muted);line-height:1.5}
-  .retirar-box p{margin-bottom:10px}
-  .aviso-retirada{background:#fdecea;border:1px solid #f5b5ac;color:#8a2c22;font-size:12.5px;line-height:1.55;padding:14px 16px;border-radius:12px;margin-top:12px}
-  .aviso-retirada b{font-weight:800}
-  .btn-retirar{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #f5b5ac;color:#8a2c22;font-size:12.5px;font-weight:700;padding:9px 16px;border-radius:22px;margin-top:10px}
+  .aviso-retirada{color:#c0392b;font-size:12px;line-height:1.5;margin-top:10px}
+  .aviso-retirada b{font-weight:700}
+  .btn-retirar{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid #c0392b;color:#c0392b;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:16px;margin-top:6px}
   .btn-retirar:hover{background:#fdecea}
 
   /* MAPS */
@@ -193,12 +192,15 @@
   .note{display:flex;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
   /* Forma de Investimento — bloco azul */
   .invest-blue{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:24px;border-radius:14px}
-  .inv-h{font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;margin-bottom:12px}
-  .inv-l{font-size:16px;font-weight:700;margin-bottom:6px}
-  .inv-l span{font-size:12.5px;font-weight:500;opacity:.85}
-  .inv-total{font-size:12px;opacity:.85;margin-top:14px}
-  .inv-total b{font-size:13px}
-  .inv-rodape{font-size:11.5px;opacity:.75;margin-top:8px;font-style:italic}
+  .inv-h{font-family:'Poppins',sans-serif;font-size:16px;font-weight:600;opacity:.9;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.15)}
+  .inv-parcelas{display:flex;flex-wrap:wrap;gap:26px}
+  .inv-parcela-item .ip-label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.7;font-weight:600}
+  .inv-parcela-item .ip-valor{font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;margin-top:5px}
+  .inv-parcela-item.destaque .ip-valor{color:var(--gold)}
+  .inv-nota{font-size:11.5px;opacity:.7;margin-top:12px;line-height:1.5}
+  .inv-total{font-size:12.5px;opacity:.85;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)}
+  .inv-total b{font-size:14px}
+  .inv-rodape{font-size:11.5px;opacity:.6;margin-top:8px;font-style:italic}
   .mod-box{margin-top:20px;text-align:center}
   .mod-t{font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;color:var(--navy);margin-bottom:14px}
   .mod-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
@@ -365,19 +367,24 @@ const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
 function buildInvest(v, temExperiencias, waRetirar){
   const pad=n=>String(n).padStart(2,'0');
   const primeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
-  let linhas='';
+  let parcelasHtml='';
   if(v.parcelas&&v.valorParcelaNum){
     if(v.taxaUnicaNum){
-      linhas=`<div class="inv-l">01x ${brl(primeira)} <span>(${brl(v.taxaUnicaNum)} das taxas de embarque + ${brl(v.valorParcelaNum)} da primeira parcela)</span></div>
-              <div class="inv-l">+ ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>`;
+      parcelasHtml=`<div class="inv-parcelas">
+        <div class="inv-parcela-item destaque"><div class="ip-label">1ª parcela</div><div class="ip-valor">${brl(primeira)}</div></div>
+        <div class="inv-parcela-item"><div class="ip-label">Demais ${pad(v.parcelas-1)} parcelas</div><div class="ip-valor">${brl(v.valorParcelaNum)}</div></div>
+      </div>
+      <div class="inv-nota">A 1ª parcela inclui ${brl(v.taxaUnicaNum)} de taxas de embarque, cobradas uma única vez.</div>`;
     }else{
-      linhas=`<div class="inv-l">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>`;
+      parcelasHtml=`<div class="inv-parcelas">
+        <div class="inv-parcela-item destaque"><div class="ip-label">${pad(v.parcelas)}X sem juros</div><div class="ip-valor">${brl(v.valorParcelaNum)}</div></div>
+      </div>`;
     }
   }
   const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
   return `<div class="card invest-blue">
     ${v.parcelas?`<div class="inv-h">Pagamento em até ${v.parcelas}X sem juros no cartão.</div>`:''}
-    ${linhas}
+    ${parcelasHtml}
     <div class="inv-total">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div>
     <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>
   </div>
@@ -494,7 +501,6 @@ function render(){
         <span>A MD é homologada pelo Ministério do Turismo</span>
       </div>
     </div>
-    <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
   </header>
 
   <div class="hero-banner" style="background-image:url('${D.hero.imagem}')">
@@ -503,6 +509,8 @@ function render(){
       <div class="hero-info">${D.hero.chips.map(c=>`<span>${c}</span>`).join('<span class="div">|</span>')}</div>
     </div>
   </div>
+
+  <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
 
   <div class="wrap">
     <section id="sua-viagem">
@@ -530,10 +538,6 @@ function render(){
       ${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
     </section>`:''}
 
-    <div class="card retirar-box">
-      <p>Não vai usar algum desses itens? Sem problema — qualquer um deles pode ser retirado do pacote, com o valor descontado proporcionalmente do preço final.</p>
-      <a class="btn-retirar" href="${waRetirar}" target="_blank">💬 Quero retirar estes extras e abaixar o preço final</a>
-    </div>
     </div>`:''}
 
     <section id="valores"><div class="sec-head"><span class="ic">💳</span><h2>Forma de Investimento</h2></div>
@@ -633,13 +637,33 @@ function initCarousels(){
 // leaflet maps (rota ida/volta + localização do hotel) com mapa real — orçamento completo e cotação só de hotel.
 function initMaps(){
   const OSM=()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18});
-  function routeMap(id,pts,color){
+  async function geocodePonto(q){
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+      const a=await r.json();
+      if(a&&a[0]) return { lat:+a[0].lat, lon:+a[0].lon };
+    }catch(e){}
+    return null;
+  }
+  async function routeMap(id,pts,color){
     const el=document.getElementById(id); if(!el)return;
+    // a extração às vezes não traz lat/lon de todos os aeroportos da rota — completa aqui
+    // buscando pelo código IATA (entre parênteses no nome) ou pelo nome do ponto.
+    const completos=[];
+    for(const p of (pts||[])){
+      if(p && isFinite(p.lat) && isFinite(p.lon) && (p.lat||p.lon)){ completos.push(p); continue; }
+      const m2=/\(([A-Z]{3})\)/.exec((p&&p.nome)||'');
+      const q=m2?`${m2[1]} airport`:((p&&p.nome)||'');
+      if(!q) continue;
+      const g=await geocodePonto(q);
+      if(g) completos.push({...p, lat:g.lat, lon:g.lon});
+    }
+    if(completos.length<2){ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível localizar todos os pontos da rota.</div>'; return; }
     const m=L.map(id,{zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,attributionControl:false});
     OSM().addTo(m);
-    const ll=pts.map(p=>[p.lat,p.lon]);
+    const ll=completos.map(p=>[p.lat,p.lon]);
     L.polyline(ll,{color,weight:3,dashArray:'6 6'}).addTo(m);
-    pts.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
+    completos.forEach(p=>L.circleMarker([p.lat,p.lon],{radius:5,color:'#fff',weight:2,fillColor:color,fillOpacity:1}).addTo(m).bindTooltip(p.nome,{permanent:true,direction:'top',className:'maptip'}));
     m.fitBounds(ll,{padding:[36,36]});
     // a seção pode estar dentro de um container que ainda não tinha o tamanho final
     // no instante da criação do mapa (layout ainda assentando) — isso deixava o
