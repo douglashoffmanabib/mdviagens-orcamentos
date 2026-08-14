@@ -55,8 +55,18 @@
   .fotoCard.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(224,165,46,.4); }
   .fotoNum{ position:absolute; top:6px; left:6px; background:var(--gold); color:#1b1b1b; font-weight:800; font-size:13px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
   .fotoCat{ position:absolute; top:6px; right:6px; background:rgba(14,28,66,.85); border:1px solid rgba(224,165,46,.5); color:var(--gold); font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
+  .fotoOficial{ position:absolute; top:6px; right:6px; background:var(--gold); color:#1b1b1b; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
+  .fotoOficialBtn{ position:absolute; bottom:6px; right:6px; width:26px; height:26px; border-radius:50%; border:1px solid rgba(255,255,255,.4); background:rgba(14,28,66,.75); color:#fff; font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .fotoOficialBtn.on{ background:var(--gold); color:#1b1b1b; border-color:var(--gold); }
+  .fotoAvisoOficial{ font-size:11.5px; color:var(--muted); margin-top:6px; }
   .fotoCred{ position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#ddd; font-size:10px; padding:2px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .fotoAcoes{ width:100%; display:flex; gap:10px; align-items:center; }
+  .precoBox{ width:100%; background:#0a1836; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:6px 0 14px; }
+  .precoLinha{ display:flex; justify-content:space-between; font-size:14px; color:var(--ink); padding:4px 0; }
+  .precoLinha.precoTotal{ border-top:1px solid var(--line); margin-top:8px; padding-top:10px; font-size:16px; }
+  .precoLinha b{ color:var(--gold); }
+  .precoLabel{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .precoLabel input{ display:block; width:100%; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
 </style>
 </head>
 <body>
@@ -164,18 +174,79 @@ async function gerar(arquivos, label){
     // extras digitados manualmente na tela entram junto com os que a IA já encontrou no documento
     const manual = extrasManuais();
     if (manual.length) { j.data.extras = [...(Array.isArray(j.data.extras) ? j.data.extras : []), ...manual]; }
-    // pacote/hotel: oferecer as fotos do destino para escolher a capa
-    const temHotel = (Array.isArray(j.data.hoteis) && j.data.hoteis.length) || (j.data.hotel && j.data.hotel.nome);
-    if (temHotel && (j.data.destinoBusca || j.data.destinoResumo)) {
-      const fotos = await buscarFotos(j.data);
-      if (fotos && fotos.length) { montarEscolha(j.data, label, fotos); return; }
+    // antes de seguir, confirme (ou ajuste) o valor final da proposta
+    if (j.data.valores && typeof j.data.valores.totalNum === 'number') {
+      montarPreco(j.data, label);
+      return;
     }
-    await finalizar(j.data, label, null);
+    await continuarAposPreco(j.data, label);
   } catch(e){
     addCard({ ok:false, arquivo:label, erro:String(e) });
   }
 }
 const soDocLink = t => t === 'AER' || t === 'HTL';
+async function continuarAposPreco(data, label){
+  // pacote/hotel: oferecer as fotos do destino para escolher a capa
+  const temHotel = (Array.isArray(data.hoteis) && data.hoteis.length) || (data.hotel && data.hotel.nome);
+  if (temHotel && (data.destinoBusca || data.destinoResumo)) {
+    const fotos = await buscarFotos(data);
+    if (fotos && fotos.length) { montarEscolha(data, label, fotos); return; }
+  }
+  await finalizar(data, label, null);
+}
+function brlExtrair(n){ return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+let _preco = 0;
+function montarPreco(data, label){
+  const eid = 'prc' + (_preco++);
+  const total = (data.valores && data.valores.totalNum) || 0;
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">Confirme o valor final da proposta${data.cliente && data.cliente.nome ? ' — ' + data.cliente.nome : ''}:</div>
+    <div class="precoBox">
+      <div class="precoLinha"><span>Valor identificado na extração</span><b>${brlExtrair(total)}</b></div>
+      <label class="precoLabel">Adicionar valor extra (R$)
+        <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
+      </label>
+      <label class="precoLabel">Valor final (edite direto se preferir ajustar manualmente)
+        <input type="number" step="0.01" id="${eid}_final" value="${total.toFixed(2)}" oninput="atualizarPrecoManual('${eid}')">
+      </label>
+      <div class="precoLinha precoTotal"><span>Valor final da proposta</span><b id="${eid}_totalView">${brlExtrair(total)}</b></div>
+    </div>
+    <div class="fotoAcoes">
+      <button class="btn p" onclick="confirmarPreco('${eid}')">CONFIRMAR PREÇO E CONTINUAR</button>
+    </div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._precoOriginal = total;
+}
+function atualizarPrecoExtra(eid){
+  const el = $(eid);
+  const extra = parseFloat($(eid + '_extra').value) || 0;
+  const novo = el._precoOriginal + extra;
+  $(eid + '_final').value = novo.toFixed(2);
+  $(eid + '_totalView').textContent = brlExtrair(novo);
+}
+function atualizarPrecoManual(eid){
+  const el = $(eid);
+  const novo = parseFloat($(eid + '_final').value) || 0;
+  $(eid + '_extra').value = (novo - el._precoOriginal).toFixed(2);
+  $(eid + '_totalView').textContent = brlExtrair(novo);
+}
+async function confirmarPreco(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  const novoTotal = parseFloat($(eid + '_final').value);
+  const totalFinal = isFinite(novoTotal) ? novoTotal : el._precoOriginal;
+  if (data.valores) {
+    const v = data.valores;
+    v.totalNum = totalFinal;
+    if (v.parcelas && v.valorParcelaNum) {
+      const base = totalFinal - (v.taxaUnicaNum || 0);
+      v.valorParcelaNum = Math.round((base / v.parcelas) * 100) / 100;
+    }
+  }
+  el.remove();
+  await continuarAposPreco(data, label);
+}
 async function buscarFotos(data){
   try{
     const alts = [data.destinoMensagem, (data.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
@@ -186,8 +257,12 @@ async function buscarFotos(data){
     const r = await fetch('/api/city-photos?' + params.toString());
     if (!r.ok) return null;
     const j = await r.json();
-    if (j.escolhida && j.fotos) j.fotos.forEach(f => { f.pre = (f.url === j.escolhida); });
-    return j.fotos || null;
+    const fotos = Array.isArray(j.fotos) ? [...j.fotos] : [];
+    // a foto oficial (pré-aprovada por você) sempre entra primeiro na grade, com destaque
+    if (j.oficial && j.oficial.url) fotos.unshift({ ...j.oficial, oficial: true });
+    if (j.escolhida) fotos.forEach(f => { f.pre = (f.url === j.escolhida); });
+    else if (fotos[0] && fotos[0].oficial) fotos[0].pre = true; // sem escolha salva ainda: pré-seleciona a oficial
+    return fotos.length ? fotos : null;
   } catch(e){ return null; }
 }
 let _esc = 0;
@@ -196,13 +271,15 @@ function montarEscolha(data, label, fotos){
   const grid = fotos.map((f, i) => `
     <div class="fotoCard${f.pre ? ' sel' : ''}" id="${eid}_${i}" onclick="escolher('${eid}',${i})">
       <span class="fotoNum">${i + 1}</span>
-      ${f.categoriaLabel ? `<span class="fotoCat">${f.categoriaLabel}</span>` : ''}
+      ${f.oficial ? `<span class="fotoOficial">★ Oficial</span>` : (f.categoriaLabel ? `<span class="fotoCat">${f.categoriaLabel}</span>` : '')}
       <img src="${f.thumb || f.url}" alt="Opção ${i + 1}">
+      <button class="fotoOficialBtn${f.oficial ? ' on' : ''}" onclick="event.stopPropagation(); marcarOficial('${eid}', ${i})" title="${f.oficial ? 'Remover como foto oficial desta cidade' : 'Marcar como foto oficial desta cidade'}">★</button>
       <div class="fotoCred">${f.credito || ''}</div>
     </div>`).join('');
   $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
     <div class="fotoTitulo">${(data.cliente && data.cliente.nome) || 'Orçamento'} — escolha a foto de capa (${data.destinoMensagem || data.destinoResumo || ''}):</div>
     <div class="fotoGrid">${grid}</div>
+    <div class="fotoAvisoOficial">★ marca a foto como oficial dessa cidade — ela passa a abrir sempre em primeiro lugar, sem gastar busca nova.</div>
     <div class="fotoAcoes">
       <button class="btn p" onclick="confirmarFoto('${eid}')">USAR FOTO SELECIONADA</button>
       <button class="btn" onclick="confirmarFoto('${eid}', true)">Automática (sem escolher)</button>
@@ -216,6 +293,34 @@ function montarEscolha(data, label, fotos){
 function escolher(eid, i){
   const el = $(eid); el._sel = i;
   el.querySelectorAll('.fotoCard').forEach((c, k) => c.classList.toggle('sel', k === i));
+}
+async function marcarOficial(eid, i){
+  const el = $(eid);
+  const f = el._fotos[i];
+  const cidade = (el._data.destinoBusca || el._data.destinoResumo || '');
+  const pais = el._data.pais || '';
+  const tornarOficial = !f.oficial;
+  try{
+    await fetch('/api/city-photos', { method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify(tornarOficial
+        ? { cidade, pais, url: f.url, thumb: f.thumb, credito: f.credito, link: f.link, oficial: true }
+        : { cidade, pais, oficial: false }) });
+  } catch(e){}
+  el._fotos.forEach(x => x.oficial = false);
+  f.oficial = tornarOficial;
+  montarEscolhaAtualizar(el, eid);
+}
+function montarEscolhaAtualizar(el, eid){
+  el.querySelectorAll('.fotoCard').forEach((card, k) => {
+    const f = el._fotos[k];
+    const badge = card.querySelector('.fotoOficial, .fotoCat');
+    if (badge) badge.remove();
+    const label = f.oficial ? `<span class="fotoOficial">★ Oficial</span>` : (f.categoriaLabel ? `<span class="fotoCat">${f.categoriaLabel}</span>` : '');
+    if (label) card.querySelector('img').insertAdjacentHTML('beforebegin', label);
+    const btn = card.querySelector('.fotoOficialBtn');
+    btn.classList.toggle('on', !!f.oficial);
+    btn.title = f.oficial ? 'Remover como foto oficial desta cidade' : 'Marcar como foto oficial desta cidade';
+  });
 }
 async function confirmarFoto(eid, automatica){
   const el = $(eid);

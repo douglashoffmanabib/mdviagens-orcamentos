@@ -19,25 +19,25 @@
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
   a{color:inherit;text-decoration:none}img{display:block}
 
-  /* HEADER — topo compacto, identidade única em azul-marinho */
+  /* HEADER — capa de marca centralizada + barra utilitária + navegação */
   .topo{background:var(--navy)}
-  .topo-row1{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:16px 24px 12px}
-  .topo-row1 .logo{height:46px;width:auto;flex:0 0 auto}
-  .topo-title{flex:1;min-width:0;text-align:center}
-  .topo-title .kicker{color:var(--gold);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase}
-  .topo-title .destino{color:#fff;font-size:20px;font-weight:600;letter-spacing:.3px;margin-top:4px;line-height:1.25}
-  .topo-title .para-cliente{color:#c9d3e2;font-size:12.5px;margin-top:4px}
-  .topo-title .para-cliente b{color:#fff;font-weight:600}
-  .topo-row1 .cadastur{height:22px;width:auto;flex:0 0 auto;opacity:.8}
-  .topo-row2{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:10px 24px 14px;border-top:1px solid rgba(255,255,255,.12)}
-  .topo-contato{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:#c9d3e2}
-  .topo-contato .wpp2{display:inline-flex;align-items:center;gap:6px;color:#fff;font-weight:600}
-  .topo-contato .wpp2 svg{width:15px;height:15px;flex:0 0 auto}
+  .topo-brand{max-width:900px;margin:0 auto;padding:38px 24px 24px;text-align:center}
+  .topo-brand .logo{height:86px;width:auto;margin:0 auto;display:block}
+  .topo-brand .tagline{color:#e7ebf5;font-size:15px;margin-top:16px;font-weight:500}
+  .topo-brand .tagline b{color:var(--gold);font-weight:700}
+  .topo-brand .titulo{color:#fff;font-size:38px;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-top:14px;font-family:'Poppins',sans-serif}
+  .topo-row2{max-width:1140px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;padding:16px 24px;border-top:1px solid rgba(255,255,255,.14)}
+  .topo-contato{display:flex;align-items:center;flex-wrap:wrap;gap:9px 14px;font-size:13.5px;color:#c9d3e2}
+  .topo-contato .wpp2{display:inline-flex;align-items:center;gap:7px;color:#fff;font-weight:700}
+  .topo-contato .wpp2 svg{width:17px;height:17px;flex:0 0 auto}
   .topo-contato .sep{opacity:.4}
-  .cb-pdf{background:var(--gold);color:var(--navy);border:none;border-radius:18px;padding:9px 20px;font-size:12.5px;font-weight:800;letter-spacing:.3px;cursor:pointer}
-  .cb-pdf:hover{background:var(--gold-d);color:#fff}
-  @media(max-width:640px){.topo-title .destino{font-size:16px}}
-  @media(max-width:560px){.topo-row1 .logo{height:34px}.topo-row1 .cadastur{height:16px}}
+  .cb-pdf{display:inline-flex;align-items:center;gap:9px;background:transparent;border:none;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;padding:0}
+  .cb-pdf .ic-baixar{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--gold);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:13px;transition:.2s}
+  .cb-pdf:hover .ic-baixar{background:var(--gold);color:var(--navy)}
+  .topo-cadastur{display:flex;align-items:center;gap:9px}
+  .topo-cadastur img{height:24px;width:auto;flex:0 0 auto}
+  .topo-cadastur span{color:#c9d3e2;font-size:11px;line-height:1.35;max-width:160px}
+  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.topo-cadastur{width:100%;justify-content:center}}
 
   /* NAV */
   .nav{position:sticky;top:0;z-index:1200;background:var(--navy);color:#fff;display:flex;align-items:center;padding:0 12px;box-shadow:0 2px 10px rgba(0,0,0,.18);border-top:1px solid rgba(255,255,255,.1)}
@@ -45,7 +45,16 @@
   .nav a.link{padding:12px 16px;font-size:13px;font-weight:500;opacity:.8;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
   .nav a.link:hover,.nav a.link.active{opacity:1;border-color:var(--gold)}
 
-  .sec-head h2,.topo-title .destino{font-family:'Poppins',sans-serif}
+  /* BANNER DA VIAGEM — foto de capa em largura total, logo abaixo do menu */
+  .hero-banner{position:relative;min-height:300px;display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center}
+  .hero-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,28,66,.05),rgba(14,28,66,.78))}
+  .hero-banner-inner{position:relative;z-index:1;max-width:1140px;margin:0 auto;width:100%;padding:26px 24px 32px}
+  .hero-rota{font-size:34px;font-weight:800;font-family:'Poppins',sans-serif;text-shadow:0 2px 10px rgba(0,0,0,.35)}
+  .hero-info{margin-top:10px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:14.5px;font-weight:500;opacity:.95}
+  .hero-info .div{opacity:.4}
+  @media(max-width:640px){.hero-banner{min-height:210px}.hero-rota{font-size:22px}.hero-info{font-size:12.5px}}
+
+  .sec-head h2{font-family:'Poppins',sans-serif}
   .pdfbtn{position:fixed;bottom:20px;right:20px;z-index:2000;background:#e0a52e;color:#0e1c42;border:none;border-radius:30px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
   @media print{ .nav,.topo-row2,.pdfbtn{display:none!important} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
   /* ===== Cotação de Voos (só-voo, estilo documento) ===== */
@@ -78,13 +87,6 @@
   .vpay-t{font-size:11.5px;opacity:.85;margin-top:10px}
   @media(max-width:640px){.vfotos{grid-template-columns:1fr 1fr}.vfotos img{height:110px}}
   @media(max-width:640px){.vtable{font-size:11px}.vtable th,.vtable td{padding:6px 5px}.vlogo{width:96px}.vtitle{font-size:22px}}
-  /* CAPA DA VIAGEM — foto do destino, dentro da seção "Sua viagem" */
-  .capa-viagem{position:relative;border-radius:16px;overflow:hidden;min-height:190px;display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center;margin-bottom:16px;box-shadow:0 1px 3px rgba(16,24,40,.08)}
-  .capa-viagem::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,28,66,.08),rgba(14,28,66,.88))}
-  .capa-inner{position:relative;z-index:1;padding:20px 22px;width:100%}
-  .capa-rota{font-size:14.5px;font-weight:600;opacity:.95}
-  .capa-chips{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
-  .chip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);padding:6px 12px;border-radius:20px;font-size:13px}
 
   .wrap{max-width:1000px;margin:0 auto;padding:24px 20px 50px}
   section{scroll-margin-top:60px;margin-bottom:34px}
@@ -159,6 +161,13 @@
   .ins .badge{background:#e2231a;color:#fff;font-weight:800;border-radius:8px;padding:11px 13px;font-size:12px;text-align:center;line-height:1.1}
   .ins h4{color:var(--navy);font-size:15px}.ins p{font-size:13px;color:var(--muted)}
   .tiny{font-size:11.5px;color:var(--muted);line-height:1.55}
+  .disclaimer-item{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.5}
+  .retirar-box{padding:16px 18px;font-size:13px;color:var(--muted);line-height:1.5}
+  .retirar-box p{margin-bottom:10px}
+  .aviso-retirada{background:#fdecea;border:1px solid #f5b5ac;color:#8a2c22;font-size:12.5px;line-height:1.55;padding:14px 16px;border-radius:12px;margin-top:12px}
+  .aviso-retirada b{font-weight:800}
+  .btn-retirar{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid #f5b5ac;color:#8a2c22;font-size:12.5px;font-weight:700;padding:9px 16px;border-radius:22px;margin-top:10px}
+  .btn-retirar:hover{background:#fdecea}
 
   /* MAPS */
   .map-card{padding:12px 10px 8px}
@@ -235,8 +244,6 @@
   @media(max-width:760px){
     .grid{grid-template-columns:1fr 1fr}
     .leg{grid-template-columns:1fr 1fr;gap:6px}
-    .capa-viagem{min-height:150px}
-    .capa-inner{padding:16px}
     .partners .row{gap:18px}.partners .row img{height:24px}
   }
 </style>
@@ -355,7 +362,7 @@ if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hoteis[0]&&D.hoteis[0]
 const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
 const bubbles=(n)=>"●".repeat(Math.round(n))+"○".repeat(5-Math.round(n));
 const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-function buildInvest(v){
+function buildInvest(v, temExperiencias, waRetirar){
   const pad=n=>String(n).padStart(2,'0');
   const primeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
   let linhas='';
@@ -374,6 +381,10 @@ function buildInvest(v){
     <div class="inv-total">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div>
     <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>
   </div>
+  ${temExperiencias?`<div class="aviso-retirada">
+    <b>Quer um valor menor?</b> Todos os passeios, seguros, extras e transfers podem ser retirados do valor total do pacote — se desejar retirar algum, nos avise por favor, pois o preço final ficará mais baixo. (Exceto para extras que são gratuitos)
+    <div><a class="btn-retirar" href="${waRetirar}" target="_blank">💬 Quero retirar estes extras e abaixar o preço final</a></div>
+  </div>`:''}
   <div class="mod-box">
     <div class="mod-t">Quer modificar? Escolha:</div>
     <div class="mod-btns">
@@ -452,6 +463,7 @@ function render(){
   const temMapa=!enxuto && !!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
   const temExtras=Array.isArray(D.extras)&&D.extras.length>0;
   const temExperiencias=!enxuto || temExtras;
+  const waRetirar=`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero retirar estes extras e abaixar o preço final.`)}`;
   const nav=[["#sua-viagem","Sua viagem"]];
   if(temVoos) nav.push(["#voos","Voos"]);
   if(temHotel) nav.push(["#hotel","Hospedagem"]);
@@ -461,14 +473,10 @@ function render(){
 
   document.getElementById('app').innerHTML=`
   <header class="topo">
-    <div class="topo-row1">
+    <div class="topo-brand">
       <img class="logo" src="${LOGOS.mdTransp}" alt="MD Viagens">
-      <div class="topo-title">
-        <div class="kicker">Proposta de Viagem</div>
-        <div class="destino">${D.hero.titulo}</div>
-        <div class="para-cliente">Preparada especialmente para <b>${D.cliente.nome}</b></div>
-      </div>
-      <img class="cadastur" src="${LOGOS.cadastur}" alt="Cadastur">
+      <div class="tagline">Aqui não é sobre viajar. <b>É sobre viver experiências.</b></div>
+      <div class="titulo">Proposta de Viagem</div>
     </div>
     <div class="topo-row2">
       <div class="topo-contato">
@@ -476,22 +484,28 @@ function render(){
           <svg viewBox="0 0 24 24" fill="#25D366"><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.8.9.9-2.7-.2-.3A8 8 0 1 1 12 20zm4.5-5.8c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7 1-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.2 7.2 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4c.1-.1.1-.2.2-.4s0-.3 0-.4-.5-1.3-.7-1.7-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 6.7 9c0 1.6 1.2 3.2 1.3 3.4s2.3 3.6 5.6 4.9c.8.3 1.4.5 1.9.7.8.2 1.5.2 2.1.1.6-.1 1.4-.6 1.6-1.1s.2-1 .1-1.1-.2-.2-.4-.3z"/></svg>
           <span>WhatsApp: ${D.agente.telefone}</span>
         </a>
-        <span class="sep">•</span>
-        <span>Atendimento em Sete Lagoas e Belo Horizonte</span>
+        <span class="sep">|</span>
+        <span>Atendemos em Sete Lagoas e Belo Horizonte</span>
+        <span class="sep">|</span>
+        <button class="cb-pdf" onclick="baixarPdf()"><span>Baixar proposta em PDF</span><span class="ic-baixar">⬇</span></button>
       </div>
-      <button class="cb-pdf" onclick="baixarPdf()">Baixar Proposta</button>
+      <div class="topo-cadastur">
+        <img src="${LOGOS.cadastur}" alt="Cadastur">
+        <span>A MD é homologada pelo Ministério do Turismo</span>
+      </div>
     </div>
     <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
   </header>
 
+  <div class="hero-banner" style="background-image:url('${D.hero.imagem}')">
+    <div class="hero-banner-inner">
+      <div class="hero-rota">${D.hero.sub}</div>
+      <div class="hero-info">${D.hero.chips.map(c=>`<span>${c}</span>`).join('<span class="div">|</span>')}</div>
+    </div>
+  </div>
+
   <div class="wrap">
     <section id="sua-viagem">
-      <div class="capa-viagem" style="background-image:url('${D.hero.imagem}')">
-        <div class="capa-inner">
-          <div class="capa-rota">${D.hero.sub}</div>
-          <div class="capa-chips">${D.hero.chips.map(c=>`<span class="chip">${c}</span>`).join("")}</div>
-        </div>
-      </div>
       <div class="grid">${D.resumo.map(s=>`<div class="stat"><div class="k">${s.k}</div><div class="v">${s.v}</div></div>`).join("")}</div>
     </section>
 
@@ -502,23 +516,28 @@ function render(){
     ${temExperiencias?`<div id="experiencias">
     ${!enxuto?`<section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
       ${D.transfer
-        ?`<div class="card trf"><span class="ic2">🚐</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p></div></div>`
+        ?`<div class="card trf"><span class="ic2">🚐</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
         :`<div class="card trf"><span class="ic2">🚐</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div>`}
     </section>
 
     <section id="seguro"><div class="sec-head"><span class="ic">🛡️</span><h2>Seguro viagem</h2></div>
       ${D.seguro
-        ?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p></div></div>`
+        ?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
         :`<div class="card trf"><span class="ic2">🛡️</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
     </section>`:''}
 
     ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">🎟️</span><h2>Passeios e Extras Inclusos</h2></div>
-      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}
+      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
     </section>`:''}
+
+    <div class="card retirar-box">
+      <p>Não vai usar algum desses itens? Sem problema — qualquer um deles pode ser retirado do pacote, com o valor descontado proporcionalmente do preço final.</p>
+      <a class="btn-retirar" href="${waRetirar}" target="_blank">💬 Quero retirar estes extras e abaixar o preço final</a>
+    </div>
     </div>`:''}
 
     <section id="valores"><div class="sec-head"><span class="ic">💳</span><h2>Forma de Investimento</h2></div>
-      ${buildInvest(D.valores)}
+      ${buildInvest(D.valores, temExperiencias, waRetirar)}
     </section>
 
     <div id="informacoes">
