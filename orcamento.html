@@ -26,19 +26,14 @@
   .topo-brand .tagline{color:#e7ebf5;font-size:15px;margin-top:16px;font-weight:500}
   .topo-brand .tagline b{color:var(--gold);font-weight:700}
   .topo-brand .titulo{color:#fff;font-size:38px;font-weight:800;letter-spacing:3px;text-transform:uppercase;margin-top:14px;font-family:'Poppins',sans-serif}
-  .topo-row2{max-width:1140px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;padding:16px 24px;border-top:1px solid rgba(255,255,255,.14)}
+  .topo-row2{max-width:1140px;margin:0 auto;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px 20px;padding:16px 24px 12px;border-top:1px solid rgba(255,255,255,.14);text-align:center}
   .topo-contato{display:flex;align-items:center;flex-wrap:wrap;gap:9px 14px;font-size:13.5px;color:#c9d3e2}
   .topo-contato .wpp2{display:inline-flex;align-items:center;gap:7px;color:#fff;font-weight:700}
   .topo-contato .wpp2 svg{width:17px;height:17px;flex:0 0 auto}
   .topo-contato .sep{opacity:.4}
-  .cb-pdf{display:inline-flex;align-items:center;gap:10px;background:var(--gold);border:none;color:var(--navy);font-size:13px;font-weight:800;letter-spacing:.2px;cursor:pointer;padding:9px 18px 9px 20px;border-radius:22px;transition:.2s}
-  .cb-pdf .ic-baixar{width:20px;height:20px;border-radius:50%;background:rgba(14,28,66,.15);color:var(--navy);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
-  .cb-pdf:hover{background:var(--gold-d);color:#fff}
-  .cb-pdf:hover .ic-baixar{background:rgba(255,255,255,.25);color:#fff}
-  .cb-pdf{margin-left:auto}
   .topo-cadastur-bar{background:#000;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 16px;font-size:11px;color:#c9d3e2;text-align:center}
   .topo-cadastur-bar img{height:15px;width:auto;flex:0 0 auto}
-  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.cb-pdf{margin-left:0}.topo-cadastur-bar{font-size:10px;padding:6px 10px}}
+  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-cadastur-bar{font-size:10px;padding:6px 10px}}
 
   /* NAV — abaixo da foto, sobre o fundo claro da página */
   .nav{position:sticky;top:0;z-index:1200;background:#fff;color:var(--navy);display:flex;align-items:center;padding:0 12px;box-shadow:0 2px 10px rgba(16,24,40,.08);border-bottom:1px solid var(--line)}
@@ -56,8 +51,8 @@
   @media(max-width:640px){.hero-banner{min-height:210px}.hero-rota{font-size:22px}.hero-info{font-size:12.5px}}
 
   .sec-head h2{font-family:'Poppins',sans-serif}
-  .pdfbtn{position:fixed;bottom:20px;right:20px;z-index:2000;background:#e0a52e;color:#0e1c42;border:none;border-radius:30px;padding:12px 20px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25)}
-  @media print{ .nav,.topo-row2,.topo-cadastur-bar,.pdfbtn{display:none!important} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
+  .pdfbtn{position:fixed;bottom:18px;right:18px;z-index:2000;background:#e0a52e;color:#0e1c42;border:none;border-radius:22px;padding:9px 16px;font-size:12px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22)}
+  @media print{ .nav,.topo-row2,.topo-pdf-row,.topo-cadastur-bar,.pdfbtn{display:none!important} #hotelmap,.minimap{display:none!important} section{break-inside:avoid} }
   /* ===== Cotação de Voos (só-voo, estilo documento) ===== */
   .vpage{background:#fff;min-height:100vh}
   .vbar{background:#0e1c42;color:#fff;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;font-weight:800;letter-spacing:.5px}
@@ -515,7 +510,6 @@ function render(){
         <span class="sep">|</span>
         <span>Atendemos online à todo o Brasil e presencialmente em Sete Lagoas e Belo Horizonte</span>
       </div>
-      <button class="cb-pdf" onclick="baixarPdf()"><span>Baixar proposta em PDF</span><span class="ic-baixar">⬇</span></button>
     </div>
   </header>
 
@@ -617,7 +611,8 @@ function render(){
       <img src="${LOGOS.sakura}" alt="Sakura Consolidadora">
       <img src="${LOGOS.patria}" alt="Pátria Consolidadora">
     </div></div>
-  <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>`;
+  <footer>MD Viagens · Orçamento ${D.codigo||D.numero||''} · Agência homologada Cadastur</footer>
+  <button class="pdfbtn" onclick="baixarPdf()">📄 Baixar PDF</button>`;
 
   // nav highlight
   const links=[...document.querySelectorAll('.menu a.link')];
