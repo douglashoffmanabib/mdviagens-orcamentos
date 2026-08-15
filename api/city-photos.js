@@ -35,19 +35,21 @@ const slug = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ
 // Categorias buscadas em paralelo pra dar variedade de opções de capa.
 // O "suffix" é somado à query (cidade + país) pra enviesar o resultado do Unsplash pro tipo certo de foto.
 const CATEGORIAS_FULL = [
-  { key: 'geral',       label: 'Geral',            suffix: '',                   n: 2 },
-  { key: 'turistico',   label: 'Ponto turístico',  suffix: ' famous landmark',   n: 2 },
-  { key: 'aerea',       label: 'Vista aérea',      suffix: ' aerial view drone', n: 2 },
-  { key: 'noite',       label: 'Noite',            suffix: ' city night lights', n: 2 },
-  { key: 'dia',         label: 'Dia',              suffix: ' city daytime',      n: 2 },
-  { key: 'praia',       label: 'Praia',            suffix: ' beach',             n: 2 },
-  { key: 'festa',       label: 'Vida noturna',     suffix: ' nightlife party',   n: 2 },
+  { key: 'geral',       label: 'Geral',            suffix: '',                     n: 3 },
+  { key: 'turistico',   label: 'Ponto turístico',  suffix: ' famous landmark',     n: 3 },
+  { key: 'aerea',       label: 'Vista aérea',      suffix: ' aerial view drone',   n: 3 },
+  { key: 'noite',       label: 'Noite',            suffix: ' city night lights',   n: 3 },
+  { key: 'dia',         label: 'Dia',              suffix: ' city daytime',        n: 3 },
+  { key: 'praia',       label: 'Praia',            suffix: ' beach',               n: 3 },
+  { key: 'festa',       label: 'Vida noturna',     suffix: ' nightlife party',     n: 3 },
+  { key: 'arquitetura', label: 'Arquitetura',      suffix: ' architecture street', n: 3 },
 ];
 // versão reduzida: usada quando já existe foto oficial (só precisamos de um punhado de alternativas)
 const CATEGORIAS_CURTA = [
-  { key: 'geral',     label: 'Geral',           suffix: '',                 n: 2 },
-  { key: 'turistico', label: 'Ponto turístico', suffix: ' famous landmark', n: 2 },
-  { key: 'aerea',     label: 'Vista aérea',     suffix: ' aerial view drone', n: 2 },
+  { key: 'geral',       label: 'Geral',           suffix: '',                   n: 3 },
+  { key: 'turistico',   label: 'Ponto turístico', suffix: ' famous landmark',   n: 3 },
+  { key: 'aerea',       label: 'Vista aérea',     suffix: ' aerial view drone', n: 3 },
+  { key: 'arquitetura', label: 'Arquitetura',     suffix: ' architecture street', n: 3 },
 ];
 
 async function unsplash(q, key, perPage) {
@@ -133,9 +135,13 @@ module.exports = async (req, res) => {
   // ?refresh=1 ignora a lista em cache (útil quando o cache guardou um resultado ruim/repetido de antes)
   const forcarNovo = req.query.refresh === '1' || req.query.refresh === 'true';
 
+  // v2: versionado pra invalidar automaticamente listas antigas em cache (de antes do
+  // ajuste de 10 fotos/dedup) sem precisar esperar os 7 dias de expiração.
+  const cacheKey = 'foto:lista:v2:' + s;
+
   const [oficialRaw, cacheLista, escolhida] = await Promise.all([
     redis(['GET', 'foto:oficial:' + s]),
-    forcarNovo ? Promise.resolve(null) : redis(['GET', 'foto:lista:' + s]),
+    forcarNovo ? Promise.resolve(null) : redis(['GET', cacheKey]),
     redis(['GET', 'foto:escolha:' + slug(q)])
   ]);
 
@@ -153,7 +159,7 @@ module.exports = async (req, res) => {
   try {
     const excluirIds = oficial && oficial.url ? [] : []; // dedup por id feito abaixo; oficial não vem do Unsplash search então não tem id conhecido a priori
     const categorias = oficial ? CATEGORIAS_CURTA : CATEGORIAS_FULL;
-    const max = oficial ? 5 : 9; // com oficial: 5 extras do banco. sem oficial: até 9 (+ fallback abaixo completa 10)
+    const max = oficial ? 9 : 10; // com oficial: 9 extras do banco (+1 oficial = 10 no total). sem oficial: 10 do banco.
     let fotos = await buscarPorCategorias(base, KEY, categorias, max, excluirIds);
 
     // fallback: se veio pouca coisa (cidade pequena/pouco fotografada), tenta as alternativas antigas
@@ -176,7 +182,7 @@ module.exports = async (req, res) => {
     // pra não repetir a mesma imagem duas vezes na grade.
     if (oficial && oficial.url) fotos = fotos.filter(f => f.url !== oficial.url);
 
-    if (fotos.length) await redis(['SET', 'foto:lista:' + s, JSON.stringify(fotos), 'EX', 604800]); // 7 dias
+    if (fotos.length) await redis(['SET', cacheKey, JSON.stringify(fotos), 'EX', 604800]); // 7 dias
     return res.status(200).json({ oficial, fotos, escolhida: escolhida || null });
   } catch (e) {
     return res.status(500).json({ error: 'Falha na busca de fotos', detail: String(e).slice(0, 200) });
