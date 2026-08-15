@@ -5,7 +5,9 @@
 // POST /api/city-photos { cidade, url, credito, link, oficial:true }  -> define a foto OFICIAL da cidade (permanente, sem prazo)
 // POST /api/city-photos { cidade, oficial:false }               -> remove a foto oficial da cidade
 //
-// Fonte do banco: Unsplash (licença livre para uso comercial; crédito do fotógrafo vem junto).
+// Fonte do banco: Google Places (fotos reais do local, prioridade) + Unsplash como
+// complemento pra fechar 10 opções (licença livre para uso comercial; crédito do
+// fotógrafo vem junto). Google usa a mesma GOOGLE_MAPS_API_KEY já configurada pros hotéis.
 // Cache em Redis:
 //   foto:oficial:<slug>  -> foto pré-aprovada por você para aquela cidade (permanente, prioridade máxima)
 //   foto:lista:<slug>    -> lista de fotos do banco para aquela cidade (7 dias)
@@ -51,6 +53,40 @@ const CATEGORIAS_CURTA = [
   { key: 'aerea',       label: 'Vista aérea',     suffix: ' aerial view drone', n: 3 },
   { key: 'arquitetura', label: 'Arquitetura',     suffix: ' architecture street', n: 3 },
 ];
+
+// Fotos reais do Google Places (New) para a cidade/destino — geralmente muito mais
+// relevantes e reconhecíveis que busca por palavra-chave no Unsplash, porque são fotos
+// tiradas de fato naquele lugar (turistas, Google Maps). Usa a MESMA chave já configurada
+// para as fotos de hotel (GOOGLE_MAPS_API_KEY) — não precisa de cadastro novo.
+// As imagens são servidas via /api/place-photo (mesmo proxy já usado pros hotéis).
+async function googlePlacesFotos(cidade, pais, key) {
+  if (!key || !cidade) return [];
+  try {
+    const q = pais && !cidade.toLowerCase().includes(pais.toLowerCase()) ? `${cidade}, ${pais}` : cidade;
+    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': 'places.id,places.photos'
+      },
+      body: JSON.stringify({ textQuery: q, languageCode: 'pt-BR', maxResultCount: 1 })
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const p = (j.places || [])[0];
+    if (!p || !Array.isArray(p.photos) || !p.photos.length) return [];
+    return p.photos.slice(0, 8).map(ph => ({
+      id: 'gp_' + ph.name,
+      url: '/api/place-photo?ref=' + encodeURIComponent(ph.name) + '&w=1600',
+      thumb: '/api/place-photo?ref=' + encodeURIComponent(ph.name) + '&w=400',
+      credito: 'Foto: Google Maps',
+      link: '',
+      categoria: 'google',
+      categoriaLabel: 'Do local'
+    }));
+  } catch (e) { return []; }
+}
 
 async function unsplash(q, key, perPage) {
   const u = 'https://api.unsplash.com/search/photos?per_page=' + (perPage || 3) + '&orientation=landscape&content_filter=high'
@@ -127,7 +163,8 @@ module.exports = async (req, res) => {
   if (!q) return res.status(400).json({ error: 'Informe ?q=<cidade>' });
   const pais = (req.query.pais || '').toString().trim();
   const KEY = process.env.UNSPLASH_ACCESS_KEY;
-  if (!KEY) return res.status(500).json({ error: 'UNSPLASH_ACCESS_KEY não configurada.' });
+  const GKEY = process.env.GOOGLE_MAPS_API_KEY;
+  if (!KEY && !GKEY) return res.status(500).json({ error: 'Nenhuma chave de fotos configurada (UNSPLASH_ACCESS_KEY / GOOGLE_MAPS_API_KEY).' });
 
   // combina cidade + país na busca principal desde o início (evita confundir com lugar homônimo)
   const base = (pais && !q.toLowerCase().includes(pais.toLowerCase())) ? `${q}, ${pais}` : q;
@@ -135,9 +172,9 @@ module.exports = async (req, res) => {
   // ?refresh=1 ignora a lista em cache (útil quando o cache guardou um resultado ruim/repetido de antes)
   const forcarNovo = req.query.refresh === '1' || req.query.refresh === 'true';
 
-  // v2: versionado pra invalidar automaticamente listas antigas em cache (de antes do
-  // ajuste de 10 fotos/dedup) sem precisar esperar os 7 dias de expiração.
-  const cacheKey = 'foto:lista:v2:' + s;
+  // v3: fotos do Google Places (do local de verdade) entram primeiro, Unsplash só completa.
+  // Versionado pra invalidar sozinho qualquer lista antiga em cache.
+  const cacheKey = 'foto:lista:v3:' + s;
 
   const [oficialRaw, cacheLista, escolhida] = await Promise.all([
     redis(['GET', 'foto:oficial:' + s]),
@@ -157,13 +194,23 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const excluirIds = oficial && oficial.url ? [] : []; // dedup por id feito abaixo; oficial não vem do Unsplash search então não tem id conhecido a priori
-    const categorias = oficial ? CATEGORIAS_CURTA : CATEGORIAS_FULL;
     const max = oficial ? 9 : 10; // com oficial: 9 extras do banco (+1 oficial = 10 no total). sem oficial: 10 do banco.
-    let fotos = await buscarPorCategorias(base, KEY, categorias, max, excluirIds);
+
+    // 1) primeiro tenta o Google Places — fotos reais tiradas naquele lugar (bem mais
+    // confiável que busca por palavra-chave). 2) o Unsplash completa o que faltar pra 10.
+    const gfotos = await googlePlacesFotos(q, pais, GKEY);
+    let fotos = gfotos.slice(0, max);
+
+    if (fotos.length < max && KEY) {
+      const restante = max - fotos.length;
+      const categorias = oficial ? CATEGORIAS_CURTA : CATEGORIAS_FULL;
+      const excluirIds = fotos.map(f => f.id);
+      const extras = await buscarPorCategorias(base, KEY, categorias, restante, excluirIds);
+      fotos = fotos.concat(extras);
+    }
 
     // fallback: se veio pouca coisa (cidade pequena/pouco fotografada), tenta as alternativas antigas
-    if (fotos.length < 4) {
+    if (fotos.length < 4 && KEY) {
       const alts = (req.query.alt || '').toString().split(',').map(x => x.trim()).filter(Boolean);
       const vistos = new Set(fotos.map(f => f.id));
       for (const a of alts) {
