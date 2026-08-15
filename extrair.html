@@ -56,6 +56,8 @@
   .fotoCard:hover{ border-color:var(--gold); }
   .fotoCard.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(224,165,46,.4); }
   .fotoNum{ position:absolute; top:6px; left:6px; background:var(--gold); color:#1b1b1b; font-weight:800; font-size:13px; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+  .fotoOrdem{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:800; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.6); pointer-events:none; background:rgba(14,28,66,0); transition:background .15s; }
+  .fotoCard.sel .fotoOrdem{ background:rgba(14,28,66,.38); }
   .fotoCat{ position:absolute; top:6px; right:6px; background:rgba(14,28,66,.85); border:1px solid rgba(224,165,46,.5); color:var(--gold); font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
   .fotoOficial{ position:absolute; top:6px; right:6px; background:var(--gold); color:#1b1b1b; font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; text-transform:uppercase; letter-spacing:.03em; }
   .fotoOficialBtn{ position:absolute; bottom:6px; right:6px; width:26px; height:26px; border-radius:50%; border:1px solid rgba(255,255,255,.4); background:rgba(14,28,66,.75); color:#fff; font-size:14px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; }
@@ -337,30 +339,42 @@ async function buscarFotos(data, refresh){
   } catch(e){ return null; }
 }
 let _esc = 0;
+const MAX_FOTOS_CAPA = 3;
 function montarEscolha(data, label, fotos){
   const eid = 'esc' + (_esc++);
   const grid = fotos.map((f, i) => `
     <div class="fotoCard${f.pre ? ' sel' : ''}" id="${eid}_${i}" onclick="escolher('${eid}',${i})">
       <span class="fotoNum">${i + 1}</span>
+      <span class="fotoOrdem" id="${eid}_${i}_ordem"></span>
       ${f.oficial ? `<span class="fotoOficial">★ Oficial</span>` : (f.categoriaLabel ? `<span class="fotoCat">${f.categoriaLabel}</span>` : '')}
       <img src="${f.thumb || f.url}" alt="Opção ${i + 1}">
       <button class="fotoOficialBtn${f.oficial ? ' on' : ''}" onclick="event.stopPropagation(); marcarOficial('${eid}', ${i})" title="${f.oficial ? 'Remover como foto oficial desta cidade' : 'Marcar como foto oficial desta cidade'}">★</button>
       <div class="fotoCred">${f.credito || ''}</div>
     </div>`).join('');
   $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
-    <div class="fotoTitulo">${(data.cliente && data.cliente.nome) || 'Orçamento'} — escolha a foto de capa (${data.destinoMensagem || data.destinoResumo || ''}):</div>
+    <div class="fotoTitulo">${(data.cliente && data.cliente.nome) || 'Orçamento'} — escolha até ${MAX_FOTOS_CAPA} fotos para o carrossel do cabeçalho (${data.destinoMensagem || data.destinoResumo || ''}):</div>
     <div class="fotoGrid">${grid}</div>
-    <div class="fotoAvisoOficial">★ marca a foto como oficial dessa cidade — ela passa a abrir sempre em primeiro lugar, sem gastar busca nova.</div>
+    <div class="fotoAvisoOficial">Clique para marcar a ordem (1ª, 2ª, 3ª) — clique de novo pra desmarcar. ★ marca a foto como oficial dessa cidade — ela passa a abrir sempre em primeiro lugar, sem gastar busca nova.</div>
     <div class="fotoAcoes">
-      <button class="btn p" onclick="confirmarFoto('${eid}')">USAR FOTO SELECIONADA</button>
+      <button class="btn p" onclick="confirmarFoto('${eid}')">USAR FOTOS SELECIONADAS</button>
       <button class="btn" onclick="confirmarFoto('${eid}', true)">Automática (sem escolher)</button>
       <button class="btn" onclick="buscarNovasFotos('${eid}')">🔄 Buscar fotos diferentes</button>
     </div>
   </div>`);
   const el = $(eid);
   el._data = data; el._label = label; el._fotos = fotos;
-  el._sel = Math.max(0, fotos.findIndex(f => f.pre));
-  if (!fotos.some(f => f.pre)) el._sel = -1;
+  const preSel = fotos.findIndex(f => f.pre);
+  el._sel = preSel >= 0 ? [preSel] : [];
+  atualizarOrdemFotos(el, eid);
+}
+function atualizarOrdemFotos(el, eid){
+  el._fotos.forEach((f, k) => {
+    const card = document.getElementById(`${eid}_${k}`);
+    const ordemEl = document.getElementById(`${eid}_${k}_ordem`);
+    const pos = el._sel.indexOf(k);
+    card.classList.toggle('sel', pos >= 0);
+    ordemEl.textContent = pos >= 0 ? (pos + 1) + 'ª' : '';
+  });
 }
 async function buscarNovasFotos(eid){
   const el = $(eid);
@@ -369,11 +383,14 @@ async function buscarNovasFotos(eid){
   const fotos = await buscarFotos(data, true);
   el.remove();
   if (fotos && fotos.length) montarEscolha(data, label, fotos);
-  else await finalizar(data, label, null);
+  else await finalizar(data, label, []);
 }
 function escolher(eid, i){
-  const el = $(eid); el._sel = i;
-  el.querySelectorAll('.fotoCard').forEach((c, k) => c.classList.toggle('sel', k === i));
+  const el = $(eid);
+  const pos = el._sel.indexOf(i);
+  if (pos >= 0) { el._sel.splice(pos, 1); }
+  else if (el._sel.length < MAX_FOTOS_CAPA) { el._sel.push(i); }
+  atualizarOrdemFotos(el, eid);
 }
 async function marcarOficial(eid, i){
   const el = $(eid);
@@ -405,20 +422,22 @@ function montarEscolhaAtualizar(el, eid){
 }
 async function confirmarFoto(eid, automatica){
   const el = $(eid);
-  const foto = (!automatica && el._sel >= 0) ? el._fotos[el._sel] : null;
+  const fotos = (!automatica && el._sel.length) ? el._sel.map(i => el._fotos[i]) : [];
   el.querySelector('.fotoAcoes').innerHTML = 'Gerando o link…';
-  await finalizar(el._data, el._label, foto);
+  await finalizar(el._data, el._label, fotos);
   el.remove();
 }
-async function finalizar(data, label, foto){
-  if (foto) {
+async function finalizar(data, label, fotos){
+  fotos = fotos || [];
+  if (fotos.length) {
     data.hero = data.hero || {};
-    data.hero.imagem = foto.url;
+    data.hero.imagens = fotos.map(f => f.url);
+    data.hero.imagem = fotos[0].url;
     data.fotoEscolhida = true;
-    data.fotoCredito = foto.credito || '';
-    // guarda a escolha para essa cidade (pré-seleciona da próxima vez)
+    data.fotoCredito = fotos[0].credito || '';
+    // guarda a escolha principal para essa cidade (pré-seleciona da próxima vez)
     try { fetch('/api/city-photos', { method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({ cidade: data.destinoBusca || data.destinoResumo, url: foto.url }) }); } catch(e){}
+      body: JSON.stringify({ cidade: data.destinoBusca || data.destinoResumo, url: fotos[0].url }) }); } catch(e){}
   }
   let id, codigo, tipo;
   try {
