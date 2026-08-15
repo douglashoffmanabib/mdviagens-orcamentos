@@ -35,10 +35,11 @@
   .cb-pdf .ic-baixar{width:20px;height:20px;border-radius:50%;background:rgba(14,28,66,.15);color:var(--navy);display:inline-flex;align-items:center;justify-content:center;font-size:11px}
   .cb-pdf:hover{background:var(--gold-d);color:#fff}
   .cb-pdf:hover .ic-baixar{background:rgba(255,255,255,.25);color:#fff}
-  .topo-cadastur{display:flex;align-items:center;gap:9px;margin-left:auto}
-  .topo-cadastur img{height:24px;width:auto;flex:0 0 auto}
-  .topo-cadastur span{color:#c9d3e2;font-size:11px;line-height:1.35;max-width:160px}
-  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.topo-cadastur{width:100%;justify-content:center;margin-left:0}}
+  .topo-row2-right{display:flex;align-items:center;gap:18px;margin-left:auto;flex:0 0 auto}
+  .topo-cadastur{display:flex;align-items:center;gap:8px}
+  .topo-cadastur img{height:22px;width:auto;flex:0 0 auto}
+  .topo-cadastur span{color:#c9d3e2;font-size:10.5px;line-height:1.3}
+  @media(max-width:640px){.topo-brand .logo{height:58px}.topo-brand .titulo{font-size:24px;letter-spacing:1.5px}.topo-brand .tagline{font-size:12.5px}.topo-row2{justify-content:center;text-align:center}.topo-row2-right{width:100%;justify-content:center;margin-left:0}}
 
   /* NAV — abaixo da foto, sobre o fundo claro da página */
   .nav{position:sticky;top:0;z-index:1200;background:#fff;color:var(--navy);display:flex;align-items:center;padding:0 12px;box-shadow:0 2px 10px rgba(16,24,40,.08);border-bottom:1px solid var(--line)}
@@ -93,7 +94,8 @@
   section{scroll-margin-top:60px;margin-bottom:34px}
   #experiencias,#informacoes{scroll-margin-top:60px}
   .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-  .sec-head .ic{width:30px;height:30px;border-radius:8px;background:var(--navy);color:#fff;display:grid;place-items:center;font-size:15px}
+  .sec-head .ic{color:var(--navy);display:inline-flex;align-items:center;justify-content:center;opacity:.85}
+  .sec-head .ic svg{width:23px;height:23px}
   .sec-head h2{font-size:19px;font-weight:700;color:var(--navy)}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.04)}
 
@@ -154,7 +156,8 @@
 
   /* TRANSFER */
   .trf{display:flex;gap:14px;align-items:center;padding:15px 18px}
-  .trf .ic2{font-size:26px}
+  .trf .ic2{color:var(--navy);opacity:.55;flex:0 0 auto;display:flex}
+  .ic2 svg{width:25px;height:25px}
   .trf h4{color:var(--navy);font-size:15px}.trf p{font-size:13px;color:var(--muted)}
 
   /* INSURANCE */
@@ -192,12 +195,10 @@
   .note{display:flex;gap:8px;font-size:12.5px;color:var(--muted);margin-top:10px}
   /* Forma de Investimento — bloco azul */
   .invest-blue{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:24px;border-radius:14px}
-  .inv-h{font-family:'Poppins',sans-serif;font-size:16px;font-weight:600;opacity:.9;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.15)}
-  .inv-parcelas{display:flex;flex-wrap:wrap;gap:26px}
-  .inv-parcela-item .ip-label{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;opacity:.7;font-weight:600}
-  .inv-parcela-item .ip-valor{font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;margin-top:5px}
-  .inv-parcela-item.destaque .ip-valor{color:var(--gold)}
-  .inv-nota{font-size:11.5px;opacity:.7;margin-top:12px;line-height:1.5}
+  .inv-h{font-family:'Poppins',sans-serif;font-size:21px;font-weight:800;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.15)}
+  .inv-parcelas-simple{display:flex;flex-direction:column;gap:7px}
+  .ip-line{font-family:'Poppins',sans-serif;font-size:16.5px;font-weight:700;color:#fff}
+  .ip-detalhe{font-size:12px;font-weight:400;opacity:.6}
   .inv-total{font-size:12.5px;opacity:.85;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)}
   .inv-total b{font-size:14px}
   .inv-rodape{font-size:11.5px;opacity:.6;margin-top:8px;font-style:italic}
@@ -364,20 +365,34 @@ if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hoteis[0]&&D.hoteis[0]
 const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
 const bubbles=(n)=>"●".repeat(Math.round(n))+"○".repeat(5-Math.round(n));
 const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+// Ícones das seções — linha fina, estilo Lucide/Feather (minimalista, sem emoji).
+function svgIc(inner, w){ return `<svg viewBox="0 0 24 24" width="${w||16}" height="${w||16}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`; }
+const ICONS = {
+  voos: svgIc('<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'),
+  hotel: svgIc('<path d="M3 9l9-7 9 7"/><path d="M9 22V12h6v10"/><path d="M4 22h16"/>'),
+  transfer: svgIc('<path d="M5 17H3v-4l2-5h11l3 5h1a1 1 0 0 1 1 1v3h-2"/><path d="M9 17h6"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>'),
+  seguro: svgIc('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+  extras: svgIc('<path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4z"/><line x1="10" y1="6" x2="10" y2="18" stroke-dasharray="1.5 2.5"/>'),
+  mapas: svgIc('<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>'),
+  valores: svgIc('<rect x="1" y="4" width="22" height="16" rx="2.5"/><line x1="1" y1="10" x2="23" y2="10"/>'),
+  contato: svgIc('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'),
+  porque: svgIc('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
+  quemsomos: svgIc('<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>')
+};
+
 function buildInvest(v, temExperiencias, waRetirar){
   const pad=n=>String(n).padStart(2,'0');
   const primeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
   let parcelasHtml='';
   if(v.parcelas&&v.valorParcelaNum){
     if(v.taxaUnicaNum){
-      parcelasHtml=`<div class="inv-parcelas">
-        <div class="inv-parcela-item destaque"><div class="ip-label">1ª parcela</div><div class="ip-valor">${brl(primeira)}</div></div>
-        <div class="inv-parcela-item"><div class="ip-label">Demais ${pad(v.parcelas-1)} parcelas</div><div class="ip-valor">${brl(v.valorParcelaNum)}</div></div>
-      </div>
-      <div class="inv-nota">A 1ª parcela inclui ${brl(v.taxaUnicaNum)} de taxas de embarque, cobradas uma única vez.</div>`;
+      parcelasHtml=`<div class="inv-parcelas-simple">
+        <div class="ip-line">${pad(1)}X ${brl(primeira)} <span class="ip-detalhe">(${brl(v.taxaUnicaNum)} de taxas de embarque + ${brl(v.valorParcelaNum)} da parcela)</span></div>
+        <div class="ip-line">+ ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>
+      </div>`;
     }else{
-      parcelasHtml=`<div class="inv-parcelas">
-        <div class="inv-parcela-item destaque"><div class="ip-label">${pad(v.parcelas)}X sem juros</div><div class="ip-valor">${brl(v.valorParcelaNum)}</div></div>
+      parcelasHtml=`<div class="inv-parcelas-simple">
+        <div class="ip-line">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>
       </div>`;
     }
   }
@@ -444,7 +459,7 @@ function buildHotel(h, idx){
       <button class="prev" onclick="slide(-1,${idx})">‹</button><button class="next" onclick="slide(1,${idx})">›</button>
       <div class="dots">${dots}</div>
     </div>
-    <div class="src-note">📷 ${h.fotosFonte}</div>
+    ${h.fotosFonte?`<div class="src-note">📷 ${h.fotosFonte}</div>`:''}
     <div class="hotel-body">
       <h3>${h.nome} <span class="stars">${stars(h.estrelas)}</span></h3>
       <div class="addr">📍 ${h.endereco}</div>
@@ -493,12 +508,13 @@ function render(){
         </a>
         <span class="sep">|</span>
         <span>Atendemos em Sete Lagoas e Belo Horizonte</span>
-        <span class="sep">|</span>
-        <button class="cb-pdf" onclick="baixarPdf()"><span>Baixar proposta em PDF</span><span class="ic-baixar">⬇</span></button>
       </div>
-      <div class="topo-cadastur">
-        <img src="${LOGOS.cadastur}" alt="Cadastur">
-        <span>A MD é homologada pelo Ministério do Turismo</span>
+      <div class="topo-row2-right">
+        <div class="topo-cadastur">
+          <img src="${LOGOS.cadastur}" alt="Cadastur">
+          <span>Homologado pelo<br>Ministério do Turismo</span>
+        </div>
+        <button class="cb-pdf" onclick="baixarPdf()"><span>Baixar proposta em PDF</span><span class="ic-baixar">⬇</span></button>
       </div>
     </div>
   </header>
@@ -517,35 +533,35 @@ function render(){
       <div class="grid">${D.resumo.map(s=>`<div class="stat"><div class="k">${s.k}</div><div class="v">${s.v}</div></div>`).join("")}</div>
     </section>
 
-    ${temVoos?`<section id="voos"><div class="sec-head"><span class="ic">✈️</span><h2>Voos</h2></div>${buildFlights(D.voos)}</section>`:''}
+    ${temVoos?`<section id="voos"><div class="sec-head"><span class="ic">${ICONS.voos}</span><h2>Voos</h2></div>${buildFlights(D.voos)}</section>`:''}
 
-    ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">🏨</span><h2>Hospedagem${D.hoteis.length>1?` · ${D.hoteis.length} hotéis`:''}</h2></div>${D.hoteis.map((h,i)=>buildHotel(h,i)).join('')}</section>`:''}
+    ${temHotel?`<section id="hotel"><div class="sec-head"><span class="ic">${ICONS.hotel}</span><h2>Hospedagem${D.hoteis.length>1?` · ${D.hoteis.length} hotéis`:''}</h2></div>${D.hoteis.map((h,i)=>buildHotel(h,i)).join('')}</section>`:''}
 
     ${temExperiencias?`<div id="experiencias">
-    ${!enxuto?`<section id="transfer"><div class="sec-head"><span class="ic">🚐</span><h2>Transfer</h2></div>
+    ${!enxuto?`<section id="transfer"><div class="sec-head"><span class="ic">${ICONS.transfer}</span><h2>Transfer</h2></div>
       ${D.transfer
-        ?`<div class="card trf"><span class="ic2">🚐</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
-        :`<div class="card trf"><span class="ic2">🚐</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div>`}
+        ?`<div class="card trf"><span class="ic2">${ICONS.transfer}</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
+        :`<div class="card trf"><span class="ic2">${ICONS.transfer}</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div>`}
     </section>
 
-    <section id="seguro"><div class="sec-head"><span class="ic">🛡️</span><h2>Seguro viagem</h2></div>
+    <section id="seguro"><div class="sec-head"><span class="ic">${ICONS.seguro}</span><h2>Seguro viagem</h2></div>
       ${D.seguro
         ?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
-        :`<div class="card trf"><span class="ic2">🛡️</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
+        :`<div class="card trf"><span class="ic2">${ICONS.seguro}</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
     </section>`:''}
 
-    ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">🎟️</span><h2>Passeios e Extras Inclusos</h2></div>
-      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
+    ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">${ICONS.extras}</span><h2>Passeios e Extras Inclusos</h2></div>
+      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
     </section>`:''}
 
     </div>`:''}
 
-    <section id="valores"><div class="sec-head"><span class="ic">💳</span><h2>Forma de Investimento</h2></div>
+    <section id="valores"><div class="sec-head"><span class="ic">${ICONS.valores}</span><h2>Forma de Investimento</h2></div>
       ${buildInvest(D.valores, temExperiencias, waRetirar)}
     </section>
 
     <div id="informacoes">
-    ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">🗺️</span><h2>Mapa de Voo</h2></div>
+    ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">${ICONS.mapas}</span><h2>Mapa de Voo</h2></div>
       ${(D.mapaVoo&&D.mapaVoo.ida)?`<div class="map-split ${D.mapaVoo.volta?'two':'one'}">
         <div class="card mini"><div class="cap">🛫 Ida · ${D.mapaVoo.ida.rota}</div><div id="mapIda" class="minimap"></div></div>
         ${D.mapaVoo.volta?`<div class="card mini"><div class="cap">🛬 Volta · ${D.mapaVoo.volta.rota}</div><div id="mapVolta" class="minimap"></div></div>`:''}
@@ -553,7 +569,7 @@ function render(){
       ${temHotel?`<div class="map-split ${D.hoteis.length>1?'two':'one'}">${D.hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`:''}
     </section>`:''}
 
-    <section id="contato"><div class="sec-head"><span class="ic">📞</span><h2>Contato</h2></div>
+    <section id="contato"><div class="sec-head"><span class="ic">${ICONS.contato}</span><h2>Contato</h2></div>
       <div class="card contact"><h3>Vamos fechar sua viagem?</h3>
         <p>Fale diretamente com sua agente de viagens para confirmar disponibilidade e condições.</p>
         <a class="btn" href="https://wa.me/${D.agente.whatsapp}" target="_blank">💬 Falar no WhatsApp</a>
@@ -568,7 +584,7 @@ function render(){
         </div>
       </div></section>
 
-    <section id="porque"><div class="sec-head"><span class="ic">✦</span><h2>Por que a MD Viagens</h2></div>
+    <section id="porque"><div class="sec-head"><span class="ic">${ICONS.porque}</span><h2>Por que a MD Viagens</h2></div>
       <div class="card pillars">
         <div class="pillar"><h4>Atendimento próximo</h4><p>Acompanhamento pessoal do início ao fim.</p></div>
         <div class="pillar"><h4>Destinos vividos</h4><p>A recomendação de quem conhece cada lugar.</p></div>
@@ -576,7 +592,7 @@ function render(){
         <div class="pillar"><h4>Da nossa família à sua</h4><p>Cuidado e confiança em cada detalhe.</p></div>
       </div></section>
 
-    <section id="quemsomos"><div class="sec-head"><span class="ic">🧭</span><h2>Quem Somos</h2></div>
+    <section id="quemsomos"><div class="sec-head"><span class="ic">${ICONS.quemsomos}</span><h2>Quem Somos</h2></div>
       <div class="card about">
         <p>A MD Viagens nasceu do sonho de dois empreendedores de Sete Lagoas apaixonados por viajar e proporcionar experiências inesquecíveis.</p>
         <p>Com experiência em mais de <b>18 países</b> e <b>20 capitais brasileiras</b>, atendemos clientes de todo o Brasil com um atendimento próximo, personalizado e suporte em todas as etapas da viagem.</p>
@@ -635,6 +651,75 @@ function initCarousels(){
 }
 
 // leaflet maps (rota ida/volta + localização do hotel) com mapa real — orçamento completo e cotação só de hotel.
+// Coordenadas conhecidas dos principais aeroportos/cidades — evita depender só do
+// geocodificador externo (Nominatim), que é a causa mais comum de mapa vazio.
+const AIRPORTS_DB={
+  GRU:[-23.4356,-46.4731],GUARULHOS:[-23.4356,-46.4731],"SAO PAULO":[-23.4356,-46.4731],
+  CGH:[-23.6266,-46.6556],CONGONHAS:[-23.6266,-46.6556],
+  VCP:[-23.0074,-47.1345],VIRACOPOS:[-23.0074,-47.1345],CAMPINAS:[-23.0074,-47.1345],
+  GIG:[-22.8100,-43.2506],GALEAO:[-22.8100,-43.2506],"RIO DE JANEIRO":[-22.8100,-43.2506],
+  SDU:[-22.9105,-43.1634],"SANTOS DUMONT":[-22.9105,-43.1634],
+  CNF:[-19.6336,-43.9686],CONFINS:[-19.6336,-43.9686],"BELO HORIZONTE":[-19.6336,-43.9686],
+  PLU:[-19.8512,-43.9506],PAMPULHA:[-19.8512,-43.9506],
+  BSB:[-15.8697,-47.9208],BRASILIA:[-15.8697,-47.9208],
+  SSA:[-12.9086,-38.3225],SALVADOR:[-12.9086,-38.3225],
+  REC:[-8.1264,-34.9236],RECIFE:[-8.1264,-34.9236],
+  FOR:[-3.7763,-38.5326],FORTALEZA:[-3.7763,-38.5326],
+  AJU:[-10.9840,-37.0703],ARACAJU:[-10.9840,-37.0703],
+  MCZ:[-9.5108,-35.7917],MACEIO:[-9.5108,-35.7917],
+  NAT:[-5.7681,-35.3763],NATAL:[-5.7681,-35.3763],
+  JPA:[-7.1454,-34.9486],"JOAO PESSOA":[-7.1454,-34.9486],
+  SLZ:[-2.5852,-44.2341],"SAO LUIS":[-2.5852,-44.2341],
+  THE:[-5.0597,-42.8236],TERESINA:[-5.0597,-42.8236],
+  BEL:[-1.3792,-48.4761],BELEM:[-1.3792,-48.4761],
+  MAO:[-3.0386,-60.0497],MANAUS:[-3.0386,-60.0497],
+  PVH:[-8.7093,-63.9022],"PORTO VELHO":[-8.7093,-63.9022],
+  RBR:[-9.8686,-67.8994],"RIO BRANCO":[-9.8686,-67.8994],
+  BVB:[2.8436,-60.6922],"BOA VISTA":[2.8436,-60.6922],
+  MCP:[0.0511,-51.0722],MACAPA:[0.0511,-51.0722],
+  PMW:[-10.2917,-48.3572],PALMAS:[-10.2917,-48.3572],
+  GYN:[-16.6320,-49.2206],GOIANIA:[-16.6320,-49.2206],
+  CGB:[-15.6529,-56.1167],CUIABA:[-15.6529,-56.1167],
+  CGR:[-20.4687,-54.6725],"CAMPO GRANDE":[-20.4687,-54.6725],
+  CWB:[-25.5285,-49.1758],CURITIBA:[-25.5285,-49.1758],
+  FLN:[-27.6706,-48.5525],FLORIANOPOLIS:[-27.6706,-48.5525],
+  POA:[-29.9939,-51.1714],"PORTO ALEGRE":[-29.9939,-51.1714],
+  VIX:[-19.8597,-40.2864],VITORIA:[-19.8597,-40.2864],
+  IGU:[-25.6002,-54.4854],"FOZ DO IGUACU":[-25.6002,-54.4854],
+  MGF:[-23.4795,-52.0016],MARINGA:[-23.4795,-52.0016],
+  LDB:[-23.3336,-51.1306],LONDRINA:[-23.3336,-51.1306],
+  IOS:[-14.8158,-39.0333],ILHEUS:[-14.8158,-39.0333],
+  BPS:[-16.4386,-39.0808],"PORTO SEGURO":[-16.4386,-39.0808],
+  LIS:[38.7813,-9.1359],LISBOA:[38.7813,-9.1359],
+  OPO:[41.2481,-8.6814],PORTO:[41.2481,-8.6814],
+  MAD:[40.4936,-3.5668],MADRI:[40.4936,-3.5668],MADRID:[40.4936,-3.5668],
+  CDG:[49.0097,2.5479],PARIS:[49.0097,2.5479],
+  FCO:[41.8003,12.2389],ROMA:[41.8003,12.2389],ROME:[41.8003,12.2389],
+  LHR:[51.4700,-0.4543],LONDRES:[51.4700,-0.4543],LONDON:[51.4700,-0.4543],
+  MCO:[28.4312,-81.3081],ORLANDO:[28.4312,-81.3081],
+  MIA:[25.7959,-80.2870],MIAMI:[25.7959,-80.2870],
+  JFK:[40.6413,-73.7781],"NOVA YORK":[40.6413,-73.7781],"NEW YORK":[40.6413,-73.7781],
+  EZE:[-34.8222,-58.5358],"BUENOS AIRES":[-34.8222,-58.5358],
+  SCL:[-33.3930,-70.7858],SANTIAGO:[-33.3930,-70.7858],
+  CUN:[21.0365,-86.8771],CANCUN:[21.0365,-86.8771],
+  PUJ:[18.5601,-68.3725],"PUNTA CANA":[18.5601,-68.3725],
+  DXB:[25.2532,55.3657],DUBAI:[25.2532,55.3657],
+  ORY:[48.7233,2.3794]
+};
+function normTxt(s){ return (s||'').toString().toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(); }
+function lookupAirport(nome){
+  const up=(nome||'').toUpperCase();
+  const cod=/\(([A-Z]{3})\)/.exec(up);
+  if(cod && AIRPORTS_DB[cod[1]]) return AIRPORTS_DB[cod[1]];
+  const n=normTxt(nome);
+  if(AIRPORTS_DB[n]) return AIRPORTS_DB[n];
+  for(const k in AIRPORTS_DB){ if(k.length>=4 && n.indexOf(k)>=0) return AIRPORTS_DB[k]; }
+  return null;
+}
+function pontosFromRota(rota){
+  if(!rota) return [];
+  return rota.split(/→|->/).map(x=>x.trim()).filter(Boolean).map(nome=>({nome}));
+}
 function initMaps(){
   const OSM=()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18});
   async function geocodePonto(q){
@@ -647,16 +732,20 @@ function initMaps(){
   }
   async function routeMap(id,pts,color){
     const el=document.getElementById(id); if(!el)return;
-    // a extração às vezes não traz lat/lon de todos os aeroportos da rota — completa aqui
-    // buscando pelo código IATA (entre parênteses no nome) ou pelo nome do ponto.
+    // a extração às vezes não traz lat/lon (nem sempre nem pontos) — completamos:
+    // 1) por uma base própria de aeroportos/cidades (sem depender de rede);
+    // 2) senão, geocodificando pelo código IATA ou nome do ponto.
     const completos=[];
     for(const p of (pts||[])){
       if(p && isFinite(p.lat) && isFinite(p.lon) && (p.lat||p.lon)){ completos.push(p); continue; }
-      const m2=/\(([A-Z]{3})\)/.exec((p&&p.nome)||'');
-      const q=m2?`${m2[1]} airport`:((p&&p.nome)||'');
-      if(!q) continue;
+      const nome=(p&&p.nome)||'';
+      if(!nome) continue;
+      const hit=lookupAirport(nome);
+      if(hit){ completos.push({...p, nome, lat:hit[0], lon:hit[1]}); continue; }
+      const m2=/\(([A-Z]{3})\)/.exec(nome.toUpperCase());
+      const q=m2?`${m2[1]} airport`:`${nome}, Brasil`;
       const g=await geocodePonto(q);
-      if(g) completos.push({...p, lat:g.lat, lon:g.lon});
+      if(g) completos.push({...p, nome, lat:g.lat, lon:g.lon});
     }
     if(completos.length<2){ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível localizar todos os pontos da rota.</div>'; return; }
     const m=L.map(id,{zoomControl:false,scrollWheelZoom:false,dragging:false,doubleClickZoom:false,attributionControl:false});
@@ -670,8 +759,14 @@ function initMaps(){
     // mapa cortado/deslocado. Forçamos o Leaflet a recalcular o tamanho depois.
     setTimeout(()=>{ m.invalidateSize(); m.fitBounds(ll,{padding:[36,36]}); }, 300);
   }
-  if(D.mapaVoo&&D.mapaVoo.ida) routeMap('mapIda', D.mapaVoo.ida.pontos, '#3a7ca5');
-  if(D.mapaVoo&&D.mapaVoo.volta) routeMap('mapVolta', D.mapaVoo.volta.pontos, '#c98f1e');
+  if(D.mapaVoo&&D.mapaVoo.ida){
+    const pts=(D.mapaVoo.ida.pontos&&D.mapaVoo.ida.pontos.length>=2)?D.mapaVoo.ida.pontos:pontosFromRota(D.mapaVoo.ida.rota);
+    routeMap('mapIda', pts, '#3a7ca5');
+  }
+  if(D.mapaVoo&&D.mapaVoo.volta){
+    const pts=(D.mapaVoo.volta.pontos&&D.mapaVoo.volta.pontos.length>=2)?D.mapaVoo.volta.pontos:pontosFromRota(D.mapaVoo.volta.rota);
+    routeMap('mapVolta', pts, '#c98f1e');
+  }
 
   // Localização real de cada hotel
   (D.hoteis||[]).forEach((h,i)=>{
@@ -682,7 +777,10 @@ function initMaps(){
     const g=h.geo;
     if(g && g.lat && g.lon){ show(g.lat,g.lon); return; }
     el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localizando o hotel…</div>';
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent((h.nome||'')+', '+(h.endereco||''))}`)
+    const partes=[h.nome, h.endereco, h.cidade].filter(Boolean);
+    const temPais=/brasil|brazil/i.test(partes.join(' '));
+    const q=partes.join(', ')+(temPais?'':', Brasil');
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)
       .then(r=>r.json()).then(a=>{ if(a&&a[0]){ el.innerHTML=''; show(+a[0].lat,+a[0].lon); }
         else{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Localização indisponível.</div>'; } })
       .catch(()=>{ el.innerHTML='<div style="padding:24px;color:#6b7280;font-size:13px;text-align:center">Não foi possível carregar o mapa.</div>'; });
@@ -765,7 +863,7 @@ function renderHotel(){
     ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
     : '';
   const extras = (Array.isArray(D.extras)&&D.extras.length)
-    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">🎟️</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}`
+    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}`
     : '';
   let pag='';
   if(v.parcelas&&v.valorParcelaNum){
