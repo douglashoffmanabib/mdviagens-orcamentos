@@ -208,6 +208,9 @@
   .condicoes{max-width:1000px;margin:0 auto;padding:6px 20px 26px}
   .aviso-roteiro-bar{background:#000;color:#e8ebf2;text-align:center;font-size:11.5px;line-height:1.6;padding:8px 16px}
   .aviso-roteiro-tag{background:var(--gold);color:#1b1b1b;font-weight:800;font-size:10px;letter-spacing:.4px;padding:2px 7px;border-radius:4px;display:inline-block;vertical-align:middle;margin-right:7px}
+  .revert-banner{background:#f4923b;color:#1b1b1b;text-align:center;padding:14px 16px}
+  .revert-banner .rb-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:14.5px;letter-spacing:.3px}
+  .revert-banner .rb-sub{font-size:12px;margin-top:4px;opacity:.85}
   .condicoes h4{font-size:12px;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
   .condicoes p{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:6px}
   .invest-total b{color:var(--navy);font-size:13px}
@@ -526,6 +529,7 @@ function render(){
 
   <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
 
+  ${D.avisoRevert?`<div class="revert-banner"><div class="rb-title">ORÇAMENTO JÁ FEITO E REFEITO VOLTANDO AO ORIGINAL</div><div class="rb-sub">Confira novamente todas as informações antes de reenviar.</div></div>`:''}
   ${D.avisoRoteiro?`<div class="aviso-roteiro-bar"><span class="aviso-roteiro-tag">${D.avisoRoteiro.tag||'BÔNUS'}</span>${D.avisoRoteiro.texto||D.avisoRoteiro}</div>`:''}
 
   <div class="wrap">
