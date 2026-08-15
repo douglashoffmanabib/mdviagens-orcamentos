@@ -297,13 +297,14 @@ async function confirmarPreco(eid){
   el.remove();
   await continuarAposPreco(data, label);
 }
-async function buscarFotos(data){
+async function buscarFotos(data, refresh){
   try{
     const alts = [data.destinoMensagem, (data.destinoResumo || '').split(',')[0]].filter(Boolean).join(',');
     const params = new URLSearchParams();
     params.set('q', data.destinoBusca || data.destinoResumo || '');
     if (data.pais) params.set('pais', data.pais);
     if (alts) params.set('alt', alts);
+    if (refresh) params.set('refresh', '1');
     const r = await fetch('/api/city-photos?' + params.toString());
     if (!r.ok) return null;
     const j = await r.json();
@@ -333,12 +334,22 @@ function montarEscolha(data, label, fotos){
     <div class="fotoAcoes">
       <button class="btn p" onclick="confirmarFoto('${eid}')">USAR FOTO SELECIONADA</button>
       <button class="btn" onclick="confirmarFoto('${eid}', true)">Automática (sem escolher)</button>
+      <button class="btn" onclick="buscarNovasFotos('${eid}')">🔄 Buscar fotos diferentes</button>
     </div>
   </div>`);
   const el = $(eid);
   el._data = data; el._label = label; el._fotos = fotos;
   el._sel = Math.max(0, fotos.findIndex(f => f.pre));
   if (!fotos.some(f => f.pre)) el._sel = -1;
+}
+async function buscarNovasFotos(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  el.querySelector('.fotoAcoes').innerHTML = 'Buscando fotos novas…';
+  const fotos = await buscarFotos(data, true);
+  el.remove();
+  if (fotos && fotos.length) montarEscolha(data, label, fotos);
+  else await finalizar(data, label, null);
 }
 function escolher(eid, i){
   const el = $(eid); el._sel = i;
