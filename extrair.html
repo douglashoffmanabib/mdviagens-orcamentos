@@ -122,6 +122,56 @@
 <script>
 const $ = id => document.getElementById(id);
 let files = [];
+// ---------- Edição de orçamento existente (vindo do Histórico) ----------
+let editId = new URLSearchParams(location.search).get('editar') || null;
+let editingOriginal = null;
+async function carregarParaEdicao(){
+  if (!editId) return;
+  $('status').textContent = 'Carregando orçamento existente…';
+  try{
+    const r = await fetch('/api/save?id=' + encodeURIComponent(editId));
+    if (!r.ok) { $('status').textContent = 'Não foi possível carregar esse orçamento para edição.'; editId = null; return; }
+    const j = await r.json();
+    editingOriginal = j.data;
+    if (editingOriginal.cliente) {
+      $('cliNome').value = editingOriginal.cliente.nome || '';
+      $('cliTel').value = editingOriginal.cliente.telefone || '';
+    }
+    (editingOriginal.extras || []).forEach(e => addExtraRow(e.titulo || '', e.descricao || ''));
+    const tag = editingOriginal.avisoRoteiro && editingOriginal.avisoRoteiro.tag;
+    let val = '';
+    if (tag === 'BÔNUS: ROTEIRO TESTADO') val = 'completo';
+    else if (tag === 'ROTEIRO INDICADO') val = 'curto';
+    const radio = document.querySelector('input[name="avisoRoteiro"][value="' + val + '"]');
+    if (radio) radio.checked = true;
+    $('status').textContent = '';
+    const h1 = document.querySelector('.card h1');
+    if (h1) h1.textContent = 'Editar Orçamento';
+    $('drop').insertAdjacentHTML('beforebegin', `<div class="card-res" style="margin-bottom:16px">
+      <div class="info"><div class="cli">Editando: ${escapeHtml((editingOriginal.cliente && editingOriginal.cliente.nome) || 'orçamento')} <span class="cod">${escapeHtml(editingOriginal.codigo || '')}</span></div>
+      <div class="meta">Anexe um novo arquivo abaixo para reprocessar do zero, ou clique para só ajustar preço/fotos/extras sem novo arquivo. O link e o PDF já enviados ao cliente continuam os mesmos.</div></div>
+      <button class="btn p" type="button" id="usarExistenteBtn">USAR DADOS EXISTENTES (SEM NOVO ARQUIVO)</button>
+    </div>`);
+    $('usarExistenteBtn').addEventListener('click', async () => {
+      $('usarExistenteBtn').disabled = true;
+      $('usarExistenteBtn').textContent = 'Carregando…';
+      const data = JSON.parse(JSON.stringify(editingOriginal));
+      const cn = ($('cliNome').value || '').trim();
+      const ct = ($('cliTel').value || '').trim();
+      if (cn || ct) { data.cliente = data.cliente || {}; if (cn) data.cliente.nome = cn; if (ct) data.cliente.telefone = ct; }
+      const manual = extrasManuais();
+      if (manual.length) data.extras = manual;
+      const aviso = avisoRoteiroSelecionado();
+      if (aviso) data.avisoRoteiro = aviso; else delete data.avisoRoteiro;
+      delete data.avisoRevert;
+      const label = (data.cliente && data.cliente.nome) || 'orçamento editado';
+      if (data.valores && typeof data.valores.totalNum === 'number') montarPreco(data, label);
+      else await continuarAposPreco(data, label);
+    });
+  } catch(e){
+    $('status').textContent = 'Erro ao carregar orçamento: ' + e;
+  }
+}
 $('drop').addEventListener('click', () => $('file').click());
 $('file').addEventListener('change', () => {
   files = [...$('file').files];
@@ -441,9 +491,10 @@ async function finalizar(data, label, fotos){
   }
   let id, codigo, tipo;
   try {
-    const sr = await fetch('/api/save', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ data }) });
+    const sr = await fetch('/api/save', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ data, editId }) });
     if (sr.ok) { const s = await sr.json(); id = s.id; codigo = s.codigo; tipo = s.tipo; }
   } catch(e){}
+  if (editId && id) { editId = null; } // já salvou na edição em andamento; próximos arquivos geram novo orçamento
   let url, pdf;
   if (id) { url = location.origin + '/o/' + id; pdf = location.origin + '/api/pdf?id=' + encodeURIComponent(id); }
   else {
@@ -472,6 +523,7 @@ $('go').addEventListener('click', async () => {
   } catch(e){ $('status').textContent = 'Falha: ' + e; }
   $('go').disabled = false;
 });
+carregarParaEdicao();
 </script>
 </body>
 </html>
