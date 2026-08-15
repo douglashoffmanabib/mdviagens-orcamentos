@@ -67,6 +67,10 @@
   .precoLinha b{ color:var(--gold); }
   .precoLabel{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
   .precoLabel input{ display:block; width:100%; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
+  .precoPreview{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
+  .precoManualToggle{ margin-top:12px; }
+  .precoManualToggle a{ color:var(--gold); font-size:12.5px; text-decoration:underline; cursor:pointer; }
+  .precoManual{ margin-top:6px; padding-top:6px; border-top:1px solid var(--line); }
 </style>
 </head>
 <body>
@@ -195,53 +199,99 @@ async function continuarAposPreco(data, label){
   await finalizar(data, label, null);
 }
 function brlExtrair(n){ return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+function pad2Extrair(n){ return String(n).padStart(2, '0'); }
 let _preco = 0;
 function montarPreco(data, label){
   const eid = 'prc' + (_preco++);
-  const total = (data.valores && data.valores.totalNum) || 0;
+  const v = data.valores || {};
+  const total = v.totalNum || 0;
+  const parcelas = v.parcelas || 0;
+  const valorParcela = v.valorParcelaNum || 0;
+  const taxaUnica = v.taxaUnicaNum || 0;
+  const temParcelas = parcelas > 0 && valorParcela > 0;
+  const resumoOriginal = temParcelas
+    ? (taxaUnica
+        ? `1ª parcela ${brlExtrair(valorParcela + taxaUnica)} + ${pad2Extrair(parcelas - 1)}x de ${brlExtrair(valorParcela)}`
+        : `${pad2Extrair(parcelas)}x de ${brlExtrair(valorParcela)}`)
+    : '';
   $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
     <div class="fotoTitulo">Confirme o valor final da proposta${data.cliente && data.cliente.nome ? ' — ' + data.cliente.nome : ''}:</div>
     <div class="precoBox">
       <div class="precoLinha"><span>Valor identificado na extração</span><b>${brlExtrair(total)}</b></div>
-      <label class="precoLabel">Adicionar valor extra (R$)
+      ${resumoOriginal ? `<div class="precoLinha"><span>Parcelamento identificado</span><b>${resumoOriginal}</b></div>` : ''}
+      <label class="precoLabel">Valor adicional a somar (R$) — divide automaticamente entre as parcelas
         <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
       </label>
-      <label class="precoLabel">Valor final (edite direto se preferir ajustar manualmente)
-        <input type="number" step="0.01" id="${eid}_final" value="${total.toFixed(2)}" oninput="atualizarPrecoManual('${eid}')">
-      </label>
-      <div class="precoLinha precoTotal"><span>Valor final da proposta</span><b id="${eid}_totalView">${brlExtrair(total)}</b></div>
+      <div class="precoPreview" id="${eid}_preview"></div>
+      <div class="precoManualToggle"><a href="javascript:void(0)" onclick="mostrarAjusteManual('${eid}')">Prefiro ajustar os valores manualmente</a></div>
+      <div class="precoManual" id="${eid}_manual" style="display:none">
+        <label class="precoLabel">Valor final total (R$)<input type="number" step="0.01" id="${eid}_totalManual"></label>
+        ${temParcelas ? `<label class="precoLabel">Valor da 1ª parcela (R$)<input type="number" step="0.01" id="${eid}_primeiraManual"></label>
+        <label class="precoLabel">Valor de cada uma das demais ${pad2Extrair(parcelas - 1)} parcelas (R$)<input type="number" step="0.01" id="${eid}_demaisManual"></label>` : ''}
+      </div>
     </div>
     <div class="fotoAcoes">
-      <button class="btn p" onclick="confirmarPreco('${eid}')">CONFIRMAR PREÇO E CONTINUAR</button>
+      <button class="btn p" onclick="confirmarPreco('${eid}')">ACEITAR E CONTINUAR</button>
     </div>
   </div>`);
   const el = $(eid);
-  el._data = data; el._label = label; el._precoOriginal = total;
+  el._data = data; el._label = label;
+  el._orig = { total, parcelas, valorParcela, taxaUnica };
+  atualizarPrecoExtra(eid);
 }
 function atualizarPrecoExtra(eid){
   const el = $(eid);
+  const o = el._orig;
   const extra = parseFloat($(eid + '_extra').value) || 0;
-  const novo = el._precoOriginal + extra;
-  $(eid + '_final').value = novo.toFixed(2);
-  $(eid + '_totalView').textContent = brlExtrair(novo);
+  const novoTotal = o.total + extra;
+  let html = `<div class="precoLinha precoTotal"><span>Novo valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
+  if (o.parcelas > 0 && o.valorParcela > 0) {
+    const porParcela = extra / o.parcelas;
+    const novoValorParcela = o.valorParcela + porParcela;
+    if (o.taxaUnica) {
+      const novaPrimeira = novoValorParcela + o.taxaUnica;
+      html += `<div class="precoLinha"><span>Nova 1ª parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
+        <div class="precoLinha"><span>Novas ${pad2Extrair(o.parcelas - 1)} parcelas</span><b>${brlExtrair(novoValorParcela)} cada</b></div>`;
+    } else {
+      html += `<div class="precoLinha"><span>Novas ${pad2Extrair(o.parcelas)} parcelas</span><b>${brlExtrair(novoValorParcela)} cada</b></div>`;
+    }
+  }
+  $(eid + '_preview').innerHTML = html;
 }
-function atualizarPrecoManual(eid){
+function mostrarAjusteManual(eid){
   const el = $(eid);
-  const novo = parseFloat($(eid + '_final').value) || 0;
-  $(eid + '_extra').value = (novo - el._precoOriginal).toFixed(2);
-  $(eid + '_totalView').textContent = brlExtrair(novo);
+  const box = $(eid + '_manual');
+  const mostrar = box.style.display === 'none';
+  box.style.display = mostrar ? 'block' : 'none';
+  if (mostrar) {
+    const o = el._orig;
+    const extra = parseFloat($(eid + '_extra').value) || 0;
+    $(eid + '_totalManual').value = (o.total + extra).toFixed(2);
+    if (o.parcelas > 0 && o.valorParcela > 0) {
+      const novoValorParcela = o.valorParcela + extra / o.parcelas;
+      if ($(eid + '_demaisManual')) $(eid + '_demaisManual').value = novoValorParcela.toFixed(2);
+      if ($(eid + '_primeiraManual')) $(eid + '_primeiraManual').value = (novoValorParcela + o.taxaUnica).toFixed(2);
+    }
+  }
 }
 async function confirmarPreco(eid){
   const el = $(eid);
-  const data = el._data, label = el._label;
-  const novoTotal = parseFloat($(eid + '_final').value);
-  const totalFinal = isFinite(novoTotal) ? novoTotal : el._precoOriginal;
+  const data = el._data, label = el._label, o = el._orig;
+  const manualAberto = $(eid + '_manual').style.display !== 'none';
   if (data.valores) {
     const v = data.valores;
-    v.totalNum = totalFinal;
-    if (v.parcelas && v.valorParcelaNum) {
-      const base = totalFinal - (v.taxaUnicaNum || 0);
-      v.valorParcelaNum = Math.round((base / v.parcelas) * 100) / 100;
+    if (manualAberto) {
+      const totalManual = parseFloat($(eid + '_totalManual').value);
+      const primeiraManual = $(eid + '_primeiraManual') ? parseFloat($(eid + '_primeiraManual').value) : NaN;
+      const demaisManual = $(eid + '_demaisManual') ? parseFloat($(eid + '_demaisManual').value) : NaN;
+      if (isFinite(totalManual)) v.totalNum = totalManual;
+      if (isFinite(demaisManual)) v.valorParcelaNum = demaisManual;
+      if (isFinite(primeiraManual) && isFinite(demaisManual)) v.taxaUnicaNum = Math.max(0, primeiraManual - demaisManual);
+    } else {
+      const extra = parseFloat($(eid + '_extra').value) || 0;
+      v.totalNum = o.total + extra;
+      if (o.parcelas > 0 && o.valorParcela > 0) v.valorParcelaNum = o.valorParcela + (extra / o.parcelas);
+      // taxaUnicaNum permanece igual — é um valor fixo (ex.: taxas de embarque), não escala com o extra
     }
   }
   el.remove();
