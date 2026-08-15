@@ -103,8 +103,8 @@
       <div class="extrasTitulo">Aviso "já conhecemos este roteiro" (opcional)</div>
       <div class="extrasHint">Aparece num box de destaque no orçamento, embaixo do conteúdo principal.</div>
       <label><input type="radio" name="avisoRoteiro" value="" checked> Nenhum aviso</label>
-      <label><input type="radio" name="avisoRoteiro" value="completo"> "Nós da MD Viagens já fizemos este roteiro, após seu fechamento podemos te passar todas as dicas pra você ter uma experiência incrível já testada, evitando perrengue e perda de tempo."</label>
-      <label><input type="radio" name="avisoRoteiro" value="curto"> "Nós da MD Viagens já conhecemos este roteiro, após o fechamento vamos te passar todas as dicas!"</label>
+      <label><input type="radio" name="avisoRoteiro" value="completo"> <b>BÔNUS: ROTEIRO TESTADO</b> — "Nós da MD Viagens já fizemos este roteiro pessoalmente, após seu fechamento passar dicas de uma experiência incrível já testada, evitando perrengue e perda de tempo."</label>
+      <label><input type="radio" name="avisoRoteiro" value="curto"> <b>ROTEIRO INDICADO</b> — "Temos amigos e clientes que já fizemos este roteiro, após o fechamento vamos te passar todas as dicas!"</label>
     </div>
     <div class="extrasBox">
       <div class="extrasTitulo">Passeios / Extras inclusos (opcional)</div>
@@ -177,13 +177,13 @@ function addCard(r){
   }
 }
 const AVISO_ROTEIRO_TEXTOS = {
-  completo: 'Nós da MD Viagens já fizemos este roteiro, após seu fechamento podemos te passar todas as dicas pra você ter uma experiência incrível já testada, evitando perrengue e perda de tempo.',
-  curto: 'Nós da MD Viagens já conhecemos este roteiro, após o fechamento vamos te passar todas as dicas!'
+  completo: { tag: 'BÔNUS: ROTEIRO TESTADO', texto: 'Nós da MD Viagens já fizemos este roteiro pessoalmente, após seu fechamento passar dicas de uma experiência incrível já testada, evitando perrengue e perda de tempo.' },
+  curto: { tag: 'ROTEIRO INDICADO', texto: 'Temos amigos e clientes que já fizemos este roteiro, após o fechamento vamos te passar todas as dicas!' }
 };
 function avisoRoteiroSelecionado(){
   const sel = document.querySelector('input[name="avisoRoteiro"]:checked');
   const v = sel ? sel.value : '';
-  return v ? (AVISO_ROTEIRO_TEXTOS[v] || '') : '';
+  return v ? (AVISO_ROTEIRO_TEXTOS[v] || null) : null;
 }
 async function gerar(arquivos, label){
   try{

@@ -522,7 +522,7 @@ function render(){
 
   <nav class="nav"><div class="menu">${nav.map((n,i)=>`<a class="link${i===0?' active':''}" href="${n[0]}">${n[1]}</a>`).join("")}</div></nav>
 
-  ${D.avisoRoteiro?`<div class="aviso-roteiro-bar"><span class="aviso-roteiro-tag">BÔNUS</span>${D.avisoRoteiro}</div>`:''}
+  ${D.avisoRoteiro?`<div class="aviso-roteiro-bar"><span class="aviso-roteiro-tag">${D.avisoRoteiro.tag||'BÔNUS'}</span>${D.avisoRoteiro.texto||D.avisoRoteiro}</div>`:''}
 
   <div class="wrap">
     <section id="sua-viagem">
