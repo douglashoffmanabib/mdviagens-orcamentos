@@ -130,10 +130,12 @@ module.exports = async (req, res) => {
   // combina cidade + país na busca principal desde o início (evita confundir com lugar homônimo)
   const base = (pais && !q.toLowerCase().includes(pais.toLowerCase())) ? `${q}, ${pais}` : q;
   const s = slug(base);
+  // ?refresh=1 ignora a lista em cache (útil quando o cache guardou um resultado ruim/repetido de antes)
+  const forcarNovo = req.query.refresh === '1' || req.query.refresh === 'true';
 
   const [oficialRaw, cacheLista, escolhida] = await Promise.all([
     redis(['GET', 'foto:oficial:' + s]),
-    redis(['GET', 'foto:lista:' + s]),
+    forcarNovo ? Promise.resolve(null) : redis(['GET', 'foto:lista:' + s]),
     redis(['GET', 'foto:escolha:' + slug(q)])
   ]);
 
