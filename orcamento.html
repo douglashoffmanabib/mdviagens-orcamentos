@@ -208,6 +208,8 @@
   .condicoes{max-width:1000px;margin:0 auto;padding:6px 20px 26px}
   .aviso-roteiro-bar{background:#000;color:#e8ebf2;text-align:center;font-size:11.5px;line-height:1.6;padding:8px 16px}
   .aviso-roteiro-tag{background:var(--gold);color:#1b1b1b;font-weight:800;font-size:10px;letter-spacing:.4px;padding:2px 7px;border-radius:4px;display:inline-block;vertical-align:middle;margin-right:7px}
+  .extra-fotos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .extra-fotos img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block}
   .revert-banner{background:#f4923b;color:#1b1b1b;text-align:center;padding:14px 16px}
   .revert-banner .rb-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:14.5px;letter-spacing:.3px}
   .revert-banner .rb-sub{font-size:12px;margin-top:4px;opacity:.85}
@@ -420,6 +422,11 @@ function buildInvest(v, temExperiencias, waRetirar){
   </div>`;
 }
 
+// Fotos opcionais anexadas manualmente a um passeio/extra (a agente escolhe se quiser)
+function buildExtraFotos(fotos){
+  if(!fotos || !fotos.length) return '';
+  return `<div class="extra-fotos">${fotos.map(u=>`<a href="${u}" target="_blank"><img src="${u}" loading="lazy" alt=""></a>`).join('')}</div>`;
+}
 function buildFlights(list){
   return list.map(f=>{
     const legs=f.trechos.map(t=>`
@@ -484,7 +491,15 @@ function render(){
   const temVoos=!!(D.voos&&D.voos.length);
   const temHotel=!!(D.hotel&&D.hotel.nome);
   const enxuto=temVoos&&!temHotel; // só aéreo -> versão enxuta (sem transfer/seguro/mapas/foto)
-  const temMapa=!enxuto && !!((D.mapaVoo&&(D.mapaVoo.ida||D.mapaVoo.volta)) || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
+  // a rota do mapa é montada a partir do trecho real (com a conexão embutida no texto),
+  // não só do campo "mapaVoo" solto da extração — que às vezes só traz origem/destino.
+  const trIdaR = temVoos && D.voos[0] && (D.voos[0].trechos||[]).find(t=>t.tipo==='ida');
+  const trVoltaR = temVoos && D.voos[0] && (D.voos[0].trechos||[]).find(t=>t.tipo==='volta');
+  const temRotaIda = !!((D.mapaVoo&&D.mapaVoo.ida) || trIdaR);
+  const temRotaVolta = !!((D.mapaVoo&&D.mapaVoo.volta) || trVoltaR);
+  const rotaIdaTxt = (D.mapaVoo&&D.mapaVoo.ida&&D.mapaVoo.ida.rota) || (trIdaR?`${trIdaR.deCidade||trIdaR.de} → ${trIdaR.paraCidade||trIdaR.para}`:'');
+  const rotaVoltaTxt = (D.mapaVoo&&D.mapaVoo.volta&&D.mapaVoo.volta.rota) || (trVoltaR?`${trVoltaR.deCidade||trVoltaR.de} → ${trVoltaR.paraCidade||trVoltaR.para}`:'');
+  const temMapa=!enxuto && !!(temRotaIda || temRotaVolta || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
   const temExtras=Array.isArray(D.extras)&&D.extras.length>0;
   const temExperiencias=!enxuto || temExtras;
   const waRetirar=`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero retirar estes extras e abaixar o preço final.`)}`;
@@ -555,7 +570,7 @@ function render(){
     </section>`:''}
 
     ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">${ICONS.extras}</span><h2>Passeios e Extras Inclusos</h2></div>
-      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
+      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}<p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
     </section>`:''}
 
     </div>`:''}
@@ -566,9 +581,9 @@ function render(){
 
     <div id="informacoes">
     ${temMapa?`<section id="mapas"><div class="sec-head"><span class="ic">${ICONS.mapas}</span><h2>Mapa de Voo</h2></div>
-      ${(D.mapaVoo&&D.mapaVoo.ida)?`<div class="map-split ${D.mapaVoo.volta?'two':'one'}">
-        <div class="card mini"><div class="cap">🛫 Ida · ${D.mapaVoo.ida.rota}</div><div id="mapIda" class="minimap"></div></div>
-        ${D.mapaVoo.volta?`<div class="card mini"><div class="cap">🛬 Volta · ${D.mapaVoo.volta.rota}</div><div id="mapVolta" class="minimap"></div></div>`:''}
+      ${temRotaIda?`<div class="map-split ${temRotaVolta?'two':'one'}">
+        <div class="card mini"><div class="cap">🛫 Ida · ${rotaIdaTxt}</div><div id="mapIda" class="minimap"></div></div>
+        ${temRotaVolta?`<div class="card mini"><div class="cap">🛬 Volta · ${rotaVoltaTxt}</div><div id="mapVolta" class="minimap"></div></div>`:''}
       </div>`:''}
       ${temHotel?`<div class="map-split ${D.hoteis.length>1?'two':'one'}">${D.hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`:''}
     </section>`:''}
@@ -725,6 +740,41 @@ function pontosFromRota(rota){
   if(!rota) return [];
   return rota.split(/→|->/).map(x=>x.trim()).filter(Boolean).map(nome=>({nome}));
 }
+// Extrai a(s) cidade(s)/aeroporto(s) de conexão do texto livre do trecho
+// (ex.: "Conexão em Guarulhos · GRU (1h55m)" ou "Conexões em Guarulhos (GRU) e Bogotá (BOG)").
+// Sem isso, o mapa desenhava uma linha reta origem→destino como se o voo fosse direto.
+function pontosDeConexao(conexaoTxt){
+  const out=[];
+  if(!conexaoTxt || /\bdireto\b/i.test(conexaoTxt)) return out;
+  const re=/([A-Za-zÀ-ÖØ-öø-ÿ\s]+?)\s*(?:·|\()\s*([A-Z]{3})\)?/g;
+  let m;
+  while((m=re.exec(conexaoTxt))){
+    const cidade=(m[1]||'')
+      .replace(/conex(ão|ões|ao|oes)/gi,'')
+      .replace(/\bem\b/gi,'')
+      .replace(/\bvia\b/gi,'')
+      .replace(/^\s*e\s+/i,'')
+      .replace(/\s{2,}/g,' ')
+      .trim();
+    const iata=m[2];
+    out.push({nome:(cidade?cidade+' ':'')+'('+iata+')'});
+  }
+  if(!out.length){
+    const codes=conexaoTxt.match(/\b[A-Z]{3}\b/g)||[];
+    codes.forEach(c=>out.push({nome:'('+c+')'}));
+  }
+  return out;
+}
+// Monta a rota completa (origem [+ conexões] + destino) direto do trecho real da cotação,
+// em vez de depender só do campo solto "mapaVoo" da extração (que às vezes só traz 2 pontos).
+function pontosFromTrecho(trecho){
+  if(!trecho) return [];
+  const pts=[];
+  if(trecho.de||trecho.deCidade) pts.push({nome:`${trecho.deCidade||trecho.de} (${trecho.de||''})`.replace(' ()','')});
+  pts.push(...pontosDeConexao(trecho.conexao));
+  if(trecho.para||trecho.paraCidade) pts.push({nome:`${trecho.paraCidade||trecho.para} (${trecho.para||''})`.replace(' ()','')});
+  return pts;
+}
 function initMaps(){
   const OSM=()=>L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18});
   async function geocodePonto(q){
@@ -764,12 +814,20 @@ function initMaps(){
     // mapa cortado/deslocado. Forçamos o Leaflet a recalcular o tamanho depois.
     setTimeout(()=>{ m.invalidateSize(); m.fitBounds(ll,{padding:[36,36]}); }, 300);
   }
-  if(D.mapaVoo&&D.mapaVoo.ida){
-    const pts=(D.mapaVoo.ida.pontos&&D.mapaVoo.ida.pontos.length>=2)?D.mapaVoo.ida.pontos:pontosFromRota(D.mapaVoo.ida.rota);
+  const trIda=(D.voos&&D.voos[0]&&(D.voos[0].trechos||[]).find(t=>t.tipo==='ida'))||null;
+  const trVolta=(D.voos&&D.voos[0]&&(D.voos[0].trechos||[]).find(t=>t.tipo==='volta'))||null;
+  if((D.mapaVoo&&D.mapaVoo.ida) || trIda){
+    const ptsTrecho=pontosFromTrecho(trIda);
+    const pts = ptsTrecho.length>=2 ? ptsTrecho
+      : (D.mapaVoo&&D.mapaVoo.ida&&D.mapaVoo.ida.pontos&&D.mapaVoo.ida.pontos.length>=2) ? D.mapaVoo.ida.pontos
+      : pontosFromRota(D.mapaVoo&&D.mapaVoo.ida&&D.mapaVoo.ida.rota);
     routeMap('mapIda', pts, '#3a7ca5');
   }
-  if(D.mapaVoo&&D.mapaVoo.volta){
-    const pts=(D.mapaVoo.volta.pontos&&D.mapaVoo.volta.pontos.length>=2)?D.mapaVoo.volta.pontos:pontosFromRota(D.mapaVoo.volta.rota);
+  if((D.mapaVoo&&D.mapaVoo.volta) || trVolta){
+    const ptsTrecho=pontosFromTrecho(trVolta);
+    const pts = ptsTrecho.length>=2 ? ptsTrecho
+      : (D.mapaVoo&&D.mapaVoo.volta&&D.mapaVoo.volta.pontos&&D.mapaVoo.volta.pontos.length>=2) ? D.mapaVoo.volta.pontos
+      : pontosFromRota(D.mapaVoo&&D.mapaVoo.volta&&D.mapaVoo.volta.rota);
     routeMap('mapVolta', pts, '#c98f1e');
   }
 
@@ -868,7 +926,7 @@ function renderHotel(){
     ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
     : '';
   const extras = (Array.isArray(D.extras)&&D.extras.length)
-    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p></div></div>`).join('')}`
+    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div>`).join('')}`
     : '';
   let pag='';
   if(v.parcelas&&v.valorParcelaNum){

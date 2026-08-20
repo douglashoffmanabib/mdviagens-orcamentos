@@ -30,12 +30,19 @@
   .extrasHint{ color:var(--muted); font-size:13px; margin-bottom:12px; }
   .extrasBox label{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.5; cursor:pointer; margin-bottom:8px; }
   .extrasBox label input{ margin-top:3px; flex:0 0 auto; }
-  .extraRow{ display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:start; margin-bottom:10px; }
+  .extraRow{ border:1px solid var(--line); border-radius:10px; padding:10px; margin-bottom:10px; }
+  .extraTop{ display:grid; grid-template-columns:1fr 2fr auto; gap:10px; align-items:start; }
   .extraRow input, .extraRow textarea{ background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
   .extraRow textarea{ min-height:42px; resize:vertical; }
   .extraDel{ background:#3a1d1d; border:1px solid #5d2b2b; color:#ffb4b4; border-radius:10px; padding:0 14px; font-size:13px; font-weight:600; cursor:pointer; height:100%; }
   .addExtraBtn{ background:#16295c; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:9px 18px; font-size:14px; font-weight:600; cursor:pointer; }
-  @media(max-width:640px){ .extraRow{ grid-template-columns:1fr; } .extraDel{ height:auto; padding:9px; } }
+  .extraFotosRow{ display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .extraFotoBtn{ background:#16295c; border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:600; cursor:pointer; flex:0 0 auto; }
+  .extraFotosPreview{ display:flex; gap:6px; flex-wrap:wrap; }
+  .extraFotoThumb{ position:relative; width:56px; height:44px; border-radius:6px; overflow:hidden; flex:0 0 auto; }
+  .extraFotoThumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .extraFotoThumb button{ position:absolute; top:0; right:0; background:rgba(0,0,0,.65); color:#fff; border:0; width:16px; height:16px; font-size:10px; line-height:1; cursor:pointer; padding:0; }
+  @media(max-width:640px){ .extraTop{ grid-template-columns:1fr; } .extraDel{ height:auto; padding:9px; } }
   button.go{ background:var(--navy2); color:#fff; border:0; border-radius:999px; padding:15px 34px; font-size:17px; font-weight:700; cursor:pointer; }
   button.go:disabled{ opacity:.5; cursor:default; }
   .status{ margin:18px 0 6px; font-weight:700; }
@@ -137,7 +144,7 @@ async function carregarParaEdicao(){
       $('cliNome').value = editingOriginal.cliente.nome || '';
       $('cliTel').value = editingOriginal.cliente.telefone || '';
     }
-    (editingOriginal.extras || []).forEach(e => addExtraRow(e.titulo || '', e.descricao || ''));
+    (editingOriginal.extras || []).forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || []));
     const tag = editingOriginal.avisoRoteiro && editingOriginal.avisoRoteiro.tag;
     let val = '';
     if (tag === 'BÔNUS: ROTEIRO TESTADO') val = 'completo';
@@ -192,21 +199,82 @@ function waLink(url, cliente, tel, destino){
 }
 // ---------- Extras manuais ----------
 let extraSeq = 0;
+const _extraFotos = {}; // id da linha -> array de fotos (data URL já comprimida)
 function escapeHtml(s){ return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function addExtraRow(titulo, descricao){
+function fileToDataURL(file){
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onload = () => resolve(rd.result);
+    rd.onerror = reject;
+    rd.readAsDataURL(file);
+  });
+}
+function comprimirImagem(dataUrl, maxW){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxW / img.width);
+      const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+function renderFotosExtra(id){
+  const el = $(id + '_fotos');
+  if (!el) return;
+  const arr = _extraFotos[id] || [];
+  el.innerHTML = arr.map((u, i) => `<div class="extraFotoThumb"><img src="${u}"><button type="button" onclick="removerFotoExtra('${id}',${i})">×</button></div>`).join('');
+}
+async function adicionarFotosExtra(id, files){
+  _extraFotos[id] = _extraFotos[id] || [];
+  for (const f of [...files]) {
+    try {
+      const raw = await fileToDataURL(f);
+      const comp = await comprimirImagem(raw, 1000);
+      _extraFotos[id].push(comp);
+    } catch(e){}
+  }
+  renderFotosExtra(id);
+}
+function removerFotoExtra(id, idx){
+  if (_extraFotos[id]) { _extraFotos[id].splice(idx, 1); renderFotosExtra(id); }
+}
+function removerExtra(id){
+  delete _extraFotos[id];
+  const row = $(id); if (row) row.remove();
+}
+function addExtraRow(titulo, descricao, fotosIniciais){
   const id = 'ex' + (extraSeq++);
   $('extrasList').insertAdjacentHTML('beforeend', `<div class="extraRow" id="${id}">
-    <input class="extraTitulo" placeholder="Título (ex: City Tour, Ingresso Cristo Redentor)" value="${escapeHtml(titulo)}">
-    <textarea class="extraDesc" placeholder="Descreva o que está incluso">${escapeHtml(descricao)}</textarea>
-    <button type="button" class="extraDel" onclick="document.getElementById('${id}').remove()">Remover</button>
+    <div class="extraTop">
+      <input class="extraTitulo" placeholder="Título (ex: City Tour, Ingresso Cristo Redentor)" value="${escapeHtml(titulo)}">
+      <textarea class="extraDesc" placeholder="Descreva o que está incluso">${escapeHtml(descricao)}</textarea>
+      <button type="button" class="extraDel" onclick="removerExtra('${id}')">Remover</button>
+    </div>
+    <div class="extraFotosRow">
+      <button type="button" class="extraFotoBtn" onclick="document.getElementById('${id}_file').click()">📷 Adicionar foto(s) deste passeio</button>
+      <input type="file" id="${id}_file" accept="image/*" multiple style="display:none" onchange="adicionarFotosExtra('${id}', this.files)">
+      <div class="extraFotosPreview" id="${id}_fotos"></div>
+    </div>
   </div>`);
+  if (fotosIniciais && fotosIniciais.length) { _extraFotos[id] = fotosIniciais.slice(); renderFotosExtra(id); }
+  return id;
 }
 $('addExtra').addEventListener('click', () => addExtraRow('', ''));
 function extrasManuais(){
-  return [...document.querySelectorAll('.extraRow')].map(row => ({
-    titulo: (row.querySelector('.extraTitulo').value || '').trim(),
-    descricao: (row.querySelector('.extraDesc').value || '').trim()
-  })).filter(e => e.titulo || e.descricao);
+  return [...document.querySelectorAll('.extraRow')].map(row => {
+    const fotos = _extraFotos[row.id] || [];
+    return {
+      titulo: (row.querySelector('.extraTitulo').value || '').trim(),
+      descricao: (row.querySelector('.extraDesc').value || '').trim(),
+      fotos: fotos.slice()
+    };
+  }).filter(e => e.titulo || e.descricao || e.fotos.length);
 }
 function addCard(r){
   const res = $('res');
