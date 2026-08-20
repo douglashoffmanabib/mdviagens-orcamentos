@@ -201,6 +201,17 @@ function waLink(url, cliente, tel, destino){
   if (num && num.length <= 11) num = '55' + num;
   return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
 }
+function textoProposta(url, destino){
+  const dest = (destino || '').trim() || 'sua viagem';
+  return `Segue uma proposta para ${dest}. Saliento que sugerimos algumas experiências que podem ser modificadas ou removidas do orçamento total.\n\n${url}`;
+}
+function copiarTexto(btn){
+  const url = btn.dataset.url, destino = btn.dataset.destino;
+  navigator.clipboard.writeText(textoProposta(url, destino));
+  const texto = btn.textContent;
+  btn.textContent = 'COPIADO';
+  setTimeout(() => { btn.textContent = texto; }, 1800);
+}
 // ---------- Extras manuais ----------
 let extraSeq = 0;
 const _extraFotos = {}; // id da linha -> array de fotos (data URL já comprimida)
@@ -355,7 +366,7 @@ function addCard(r){
       soDoc ? `<a class="btn p" href="${r.pdf}">BAIXAR PDF</a>` : '',
       `<a class="btn" href="${r.url}" target="_blank">ABRIR</a>`,
       !soDoc ? `<a class="btn p" href="${r.pdf}">PDF</a>` : '',
-      `<button class="btn" onclick="navigator.clipboard.writeText('${r.url}');this.textContent='COPIADO'">COPIAR LINK</button>`,
+      `<button class="btn" data-url="${escapeHtml(r.url)}" data-destino="${escapeHtml(r.destino || '')}" onclick="copiarTexto(this)">COPIAR LINK</button>`,
       `<a class="btn w" href="${r.wa}" target="_blank">WHATSAPP</a>`
     ].filter(Boolean).join(' ');
     res.insertAdjacentHTML('beforeend', `<div class="card-res">
@@ -644,7 +655,7 @@ async function finalizar(data, label, fotos){
   const cliente = (data.cliente && data.cliente.nome) || '';
   const tel = (data.cliente && data.cliente.telefone) || ($('cliTel').value || '').trim();
   const destino = data.destinoMensagem || data.destinoResumo || '';
-  addCard({ ok:true, arquivo:label, cliente, codigo, tipo, url, pdf, wa: waLink(soDocLink(tipo) ? pdf : url, cliente, tel, destino) });
+  addCard({ ok:true, arquivo:label, cliente, codigo, tipo, url, pdf, destino, wa: waLink(soDocLink(tipo) ? pdf : url, cliente, tel, destino) });
 }
 $('go').addEventListener('click', async () => {
   if (!files.length) return;

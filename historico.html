@@ -45,6 +45,18 @@
 <script>
 const statusEl=document.getElementById('status'), lista=document.getElementById('lista');
 function fmtData(ts){ if(!ts)return''; const d=new Date(ts); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function textoProposta(url,destino){
+  const dest=(destino||'').trim() || 'sua viagem';
+  return `Segue uma proposta para ${dest}. Saliento que sugerimos algumas experiências que podem ser modificadas ou removidas do orçamento total.\n\n${url}`;
+}
+function copiarTexto(btn){
+  const url=btn.dataset.url, destino=btn.dataset.destino;
+  navigator.clipboard.writeText(textoProposta(url,destino));
+  const texto=btn.textContent;
+  btn.textContent='Copiado!';
+  setTimeout(()=>{ btn.textContent=texto; }, 1800);
+}
 function waLink(url,cliente,tel,destino){
   const dest=(destino||'').trim();
   const linha1 = dest ? `Segue o orçamento para *${dest}*:` : 'Segue o seu orçamento de viagem:';
@@ -77,6 +89,7 @@ async function restaurar(id, btn){
     lista.innerHTML=arr.map(o=>{
       const url=location.origin+'/o/'+o.id;
       const titulo=o.cliente||o.titulo||o.codigo||'Orçamento';
+      const destino=o.destino||o.destinoMsg||o.titulo||'';
       const linha=[o.titulo||o.destino, fmtData(o.criadoEm)].filter(Boolean).join(' · ');
       return `<div class="card">
         <div class="info"><div class="cli">${titulo}</div><div class="meta">${linha}</div></div>
@@ -84,7 +97,7 @@ async function restaurar(id, btn){
         <a class="btn abrir" href="${url}" target="_blank">Abrir ↗</a>
         <a class="btn wpp" href="${waLink(url,o.cliente,o.telefone,o.destinoMsg)}" target="_blank">WhatsApp</a>
         <a class="btn pdf" href="/api/pdf?id=${o.id}">PDF</a>
-        <button class="btn copiar" onclick="navigator.clipboard.writeText('${url}');this.textContent='Copiado!'">Copiar link</button>
+        <button class="btn copiar" data-url="${escapeHtml(url)}" data-destino="${escapeHtml(destino)}" onclick="copiarTexto(this)">Copiar link</button>
         <a class="btn editar" href="/extrair.html?editar=${o.id}">Editar</a>
         <button class="btn restaurar" onclick="restaurar('${o.id}', this)">Restaurar original</button>
       </div>`;
