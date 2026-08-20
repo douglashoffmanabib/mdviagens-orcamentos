@@ -210,6 +210,23 @@
   .aviso-roteiro-tag{background:var(--gold);color:#1b1b1b;font-weight:800;font-size:10px;letter-spacing:.4px;padding:2px 7px;border-radius:4px;display:inline-block;vertical-align:middle;margin-right:7px}
   .extra-fotos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
   .extra-fotos img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block}
+  .exp-card{display:flex;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;background:var(--card);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .exp-foto{position:relative;flex:0 0 240px}
+  .exp-carousel{position:relative;width:100%;height:100%;min-height:200px;overflow:hidden;background:#e9eef5}
+  .exp-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.4s ease}
+  .exp-slide.active{opacity:1}
+  .exp-legenda{position:absolute;left:0;right:0;bottom:0;background:rgba(14,28,66,.62);color:#fff;font-size:10px;text-align:center;padding:3px 6px;letter-spacing:.2px}
+  .exp-info{flex:1;padding:16px 18px;min-width:0}
+  .exp-info h4{font-size:16px;color:var(--navy);margin-bottom:6px}
+  .exp-info>p{font-size:13.5px;color:var(--ink);opacity:.85;margin-bottom:8px}
+  .exp-opiniao{margin:6px 0 10px;background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .exp-opiniao-tit{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--gold-d);margin-bottom:5px}
+  .exp-op-slide{display:none}
+  .exp-op-slide.active{display:block}
+  .exp-op-estrelas{color:var(--gold);font-size:13px;letter-spacing:1px}
+  .exp-op-txt{font-size:12.5px;font-style:italic;color:var(--ink);margin:4px 0}
+  .exp-op-autor{font-size:11.5px;color:var(--muted);text-align:right}
+  @media(max-width:640px){.exp-card{flex-direction:column}.exp-foto{flex:0 0 170px;width:100%}}
   .revert-banner{background:#f4923b;color:#1b1b1b;text-align:center;padding:14px 16px}
   .revert-banner .rb-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:14.5px;letter-spacing:.3px}
   .revert-banner .rb-sub{font-size:12px;margin-top:4px;opacity:.85}
@@ -427,6 +444,39 @@ function buildExtraFotos(fotos){
   if(!fotos || !fotos.length) return '';
   return `<div class="extra-fotos">${fotos.map(u=>`<a href="${u}" target="_blank"><img src="${u}" loading="lazy" alt=""></a>`).join('')}</div>`;
 }
+const DISCLAIMER_EXTRA='Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.';
+// Card de "Experiências Propostas": com fotos escolhidas, vira carrossel + opinião do Google;
+// sem fotos (ex.: item detectado automaticamente na extração), cai no card simples de sempre.
+function buildExperienciaCard(e){
+  const fotos=Array.isArray(e.fotos)?e.fotos:[];
+  const opinioes=Array.isArray(e.opinioes)?e.opinioes:[];
+  if(!fotos.length){
+    return `<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">${DISCLAIMER_EXTRA}</p></div></div>`;
+  }
+  const slides=fotos.map((u,i)=>`<div class="exp-slide${i===0?' active':''}" style="background-image:url('${u}')"></div>`).join('');
+  const opBlock = opinioes.length ? `<div class="exp-opiniao">
+      <div class="exp-opiniao-tit">Opinião selecionada no Google:</div>
+      <div class="exp-opiniao-carousel">
+        ${opinioes.map((o,i)=>`<div class="exp-op-slide${i===0?' active':''}">
+          <div class="exp-op-estrelas">${'★'.repeat(Math.round(o.nota||5))}${'☆'.repeat(5-Math.round(o.nota||5))}</div>
+          <p class="exp-op-txt">“${o.texto||''}”</p>
+          <div class="exp-op-autor">— ${o.autor||'Viajante'}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+  return `<div class="exp-card">
+    <div class="exp-foto">
+      <div class="exp-carousel">${slides}</div>
+      <div class="exp-legenda">Fotos meramente ilustrativas</div>
+    </div>
+    <div class="exp-info">
+      <h4>${e.titulo||''}</h4>
+      <p>${e.descricao||''}</p>
+      ${opBlock}
+      <p class="disclaimer-item">${DISCLAIMER_EXTRA}</p>
+    </div>
+  </div>`;
+}
 function buildFlights(list){
   return list.map(f=>{
     const legs=f.trechos.map(t=>`
@@ -569,8 +619,8 @@ function render(){
         :`<div class="card trf"><span class="ic2">${ICONS.seguro}</span><div><p class="tiny">Este produto não foi cotado. Solicite uma cotação em nossa agência e viaje tranquilo. Seguro viagem não é tudo igual: somos parceiros da Corretora de Seguros Marcos Lobato, com mais de 30 anos de experiência.</p></div></div>`}
     </section>`:''}
 
-    ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">${ICONS.extras}</span><h2>Passeios e Extras Inclusos</h2></div>
-      ${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}<p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`).join('')}
+    ${temExtras?`<section id="extras"><div class="sec-head"><span class="ic">${ICONS.extras}</span><h2>Experiências Propostas</h2></div>
+      ${D.extras.map(e=>buildExperienciaCard(e)).join('')}
     </section>`:''}
 
     </div>`:''}
@@ -926,7 +976,7 @@ function renderHotel(){
     ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
     : '';
   const extras = (Array.isArray(D.extras)&&D.extras.length)
-    ? `<h3 class="vsec">Passeios e Extras Inclusos</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div>`).join('')}`
+    ? `<h3 class="vsec">Experiências Propostas</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div>`).join('')}`
     : '';
   let pag='';
   if(v.parcelas&&v.valorParcelaNum){
@@ -993,12 +1043,36 @@ function initHeroCarousel(){
     slides.forEach((s,k)=>s.classList.toggle('active',k===i));
   }, 5000);
 }
+let _expCarouselStarted=false;
+function initExpCarousels(){
+  if(_expCarouselStarted) return;
+  _expCarouselStarted=true;
+  setInterval(()=>{
+    document.querySelectorAll('.exp-carousel').forEach(car=>{
+      const slides=car.querySelectorAll('.exp-slide');
+      if(slides.length<=1) return;
+      const i=((+car.dataset.i||0)+1)%slides.length;
+      car.dataset.i=i;
+      slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    });
+  }, 4200);
+  setInterval(()=>{
+    document.querySelectorAll('.exp-opiniao-carousel').forEach(car=>{
+      const slides=car.querySelectorAll('.exp-op-slide');
+      if(slides.length<=1) return;
+      const i=((+car.dataset.i||0)+1)%slides.length;
+      car.dataset.i=i;
+      slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    });
+  }, 6500);
+}
 function renderAll(){
   if(_TIPO==='voo') renderVoo();
   else if(_TIPO==='hotel') renderHotel();
   else render();
   initCarousels();
   initHeroCarousel();
+  initExpCarousels();
   if(window.L){initMaps();}else{window.addEventListener('load',initMaps);}
 }
 renderAll();

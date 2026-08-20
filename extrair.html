@@ -42,6 +42,10 @@
   .extraFotoThumb{ position:relative; width:56px; height:44px; border-radius:6px; overflow:hidden; flex:0 0 auto; }
   .extraFotoThumb img{ width:100%; height:100%; object-fit:cover; display:block; }
   .extraFotoThumb button{ position:absolute; top:0; right:0; background:rgba(0,0,0,.65); color:#fff; border:0; width:16px; height:16px; font-size:10px; line-height:1; cursor:pointer; padding:0; }
+  .passeioBusca{ width:100%; margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); }
+  .passeioBuscaStatus{ font-size:12.5px; color:var(--muted); }
+  .passeioBuscaStatus.err{ color:#ffb4b4; }
+  .tinyNote{ font-size:11.5px; color:var(--muted); margin-left:10px; }
   @media(max-width:640px){ .extraTop{ grid-template-columns:1fr; } .extraDel{ height:auto; padding:9px; } }
   button.go{ background:var(--navy2); color:#fff; border:0; border-radius:999px; padding:15px 34px; font-size:17px; font-weight:700; cursor:pointer; }
   button.go:disabled{ opacity:.5; cursor:default; }
@@ -144,7 +148,7 @@ async function carregarParaEdicao(){
       $('cliNome').value = editingOriginal.cliente.nome || '';
       $('cliTel').value = editingOriginal.cliente.telefone || '';
     }
-    (editingOriginal.extras || []).forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || []));
+    (editingOriginal.extras || []).forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || [], e.opinioes || []));
     const tag = editingOriginal.avisoRoteiro && editingOriginal.avisoRoteiro.tag;
     let val = '';
     if (tag === 'BÔNUS: ROTEIRO TESTADO') val = 'completo';
@@ -248,7 +252,7 @@ function removerExtra(id){
   delete _extraFotos[id];
   const row = $(id); if (row) row.remove();
 }
-function addExtraRow(titulo, descricao, fotosIniciais){
+function addExtraRow(titulo, descricao, fotosIniciais, opinioesIniciais){
   const id = 'ex' + (extraSeq++);
   $('extrasList').insertAdjacentHTML('beforeend', `<div class="extraRow" id="${id}">
     <div class="extraTop">
@@ -257,24 +261,91 @@ function addExtraRow(titulo, descricao, fotosIniciais){
       <button type="button" class="extraDel" onclick="removerExtra('${id}')">Remover</button>
     </div>
     <div class="extraFotosRow">
-      <button type="button" class="extraFotoBtn" onclick="document.getElementById('${id}_file').click()">📷 Adicionar foto(s) deste passeio</button>
+      <button type="button" class="extraFotoBtn" onclick="buscarFotosPasseio('${id}')">🔍 Buscar fotos e opiniões no Google</button>
+      <button type="button" class="extraFotoBtn" onclick="document.getElementById('${id}_file').click()">📷 Adicionar foto(s) manualmente</button>
       <input type="file" id="${id}_file" accept="image/*" multiple style="display:none" onchange="adicionarFotosExtra('${id}', this.files)">
       <div class="extraFotosPreview" id="${id}_fotos"></div>
     </div>
   </div>`);
   if (fotosIniciais && fotosIniciais.length) { _extraFotos[id] = fotosIniciais.slice(); renderFotosExtra(id); }
+  if (opinioesIniciais && opinioesIniciais.length) { _extraOpinioes[id] = opinioesIniciais.slice(); }
   return id;
 }
 $('addExtra').addEventListener('click', () => addExtraRow('', ''));
 function extrasManuais(){
   return [...document.querySelectorAll('.extraRow')].map(row => {
     const fotos = _extraFotos[row.id] || [];
+    const opinioes = _extraOpinioes[row.id] || [];
     return {
       titulo: (row.querySelector('.extraTitulo').value || '').trim(),
       descricao: (row.querySelector('.extraDesc').value || '').trim(),
-      fotos: fotos.slice()
+      fotos: fotos.slice(),
+      opinioes: opinioes.slice()
     };
   }).filter(e => e.titulo || e.descricao || e.fotos.length);
+}
+// ---------- Busca de fotos + opiniões reais de um passeio (Google Places) ----------
+const _extraOpinioes = {}; // id da linha -> array de {autor,nota,texto} (sempre notas 4-5)
+const MAX_FOTOS_PASSEIO = 4;
+async function buscarFotosPasseio(id){
+  const row = $(id);
+  const titulo = (row.querySelector('.extraTitulo').value || '').trim();
+  if (!titulo) { alert('Digite o título do passeio antes de buscar as fotos (ex.: "Parque Xcaret, México").'); return; }
+  const areaId = id + '_busca';
+  let area = $(areaId);
+  if (!area) {
+    row.querySelector('.extraFotosRow').insertAdjacentHTML('afterend', `<div class="passeioBusca" id="${areaId}"></div>`);
+    area = $(areaId);
+  }
+  area.innerHTML = `<div class="passeioBuscaStatus">Buscando fotos e opiniões de "${escapeHtml(titulo)}"…</div>`;
+  try {
+    const r = await fetch('/api/passeio-fotos?q=' + encodeURIComponent(titulo));
+    const j = await r.json();
+    if (!r.ok) { area.innerHTML = `<div class="passeioBuscaStatus err">Não encontrado: ${escapeHtml(j.error || 'erro')}. Tente incluir a cidade/país no título.</div>`; return; }
+    if (!j.fotos || !j.fotos.length) { area.innerHTML = '<div class="passeioBuscaStatus err">Nenhuma foto encontrada. Tente incluir a cidade/país no título (ex.: "Parque Xcaret, México").</div>'; return; }
+    _extraOpinioes[id] = j.opinioes || [];
+    montarEscolhaPasseio(id, area, j.fotos);
+  } catch(e) {
+    area.innerHTML = '<div class="passeioBuscaStatus err">Falha na busca: ' + e + '</div>';
+  }
+}
+function montarEscolhaPasseio(id, area, fotos){
+  area._fotos = fotos;
+  area._sel = [];
+  const grid = fotos.map((f, i) => `<div class="fotoCard" id="${id}_pf_${i}" onclick="escolherFotoPasseio('${id}',${i})">
+    <img src="${f.thumb}" loading="lazy">
+    <span class="fotoOrdem" id="${id}_pf_${i}_ordem"></span>
+  </div>`).join('');
+  const opinioesInfo = (_extraOpinioes[id] && _extraOpinioes[id].length)
+    ? `<span class="tinyNote">✔ ${_extraOpinioes[id].length} opinião(ões) positiva(s) do Google já vinculada(s)</span>`
+    : '<span class="tinyNote">Nenhuma opinião positiva encontrada no Google para este local.</span>';
+  area.innerHTML = `
+    <div class="fotoTitulo">Escolha até ${MAX_FOTOS_PASSEIO} fotos (clique pra marcar a ordem, clique de novo pra desmarcar):</div>
+    <div class="fotoGrid">${grid}</div>
+    <div class="fotoAcoes" style="margin-top:8px">
+      <button type="button" class="btn p" onclick="confirmarFotosPasseio('${id}')">USAR FOTOS SELECIONADAS</button>
+      ${opinioesInfo}
+    </div>`;
+}
+function escolherFotoPasseio(id, i){
+  const area = $(id + '_busca');
+  const pos = area._sel.indexOf(i);
+  if (pos >= 0) area._sel.splice(pos, 1);
+  else if (area._sel.length < MAX_FOTOS_PASSEIO) area._sel.push(i);
+  area._fotos.forEach((f, idx) => {
+    const card = $(id + '_pf_' + idx), ordEl = $(id + '_pf_' + idx + '_ordem');
+    const ordem = area._sel.indexOf(idx);
+    if (card) card.classList.toggle('sel', ordem >= 0);
+    if (ordEl) ordEl.textContent = ordem >= 0 ? (ordem + 1) + 'ª' : '';
+  });
+}
+function confirmarFotosPasseio(id){
+  const area = $(id + '_busca');
+  const escolhidas = area._sel.map(i => area._fotos[i].url);
+  if (!escolhidas.length) { alert('Selecione ao menos 1 foto.'); return; }
+  _extraFotos[id] = escolhidas;
+  renderFotosExtra(id);
+  area.remove();
 }
 function addCard(r){
   const res = $('res');
