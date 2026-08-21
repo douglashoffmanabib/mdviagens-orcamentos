@@ -657,7 +657,7 @@ function atualizarPrecoExtra(eid){
   // pré-visualização igual ao que vai aparecer no orçamento final: só o valor total do pacote
   let html = `<div class="precoResumoTit">Forma de pagamento</div>`;
   if (o.parcelas > 0 && novoValorParcela) {
-    html += `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros no cartão</span></div>`;
+    html += `<div class="precoLinha precoTotal"><span>ATÉ ${pad2Extrair(o.parcelas)}X sem juros no cartão</span></div>`;
     if (o.taxaUnica) {
       html += `<div class="precoLinha"><span>Primeira parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
         <div class="precoLinha"><span>Mais ${pad2Extrair(o.parcelas - 1)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
