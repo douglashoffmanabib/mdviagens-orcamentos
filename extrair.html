@@ -557,8 +557,98 @@ async function prosseguirAposSelecao(data, label){
   }
   await continuarAposPreco(data, label);
 }
+// ---------- Companhia aérea não identificada no documento: pergunta manualmente ----------
+const AIRLINES = [
+  { name: 'Aegean Airlines', code: 'A3' }, { name: 'Aeroflot', code: 'SU' }, { name: 'Aerolíneas Argentinas', code: 'AR' },
+  { name: 'Aeroméxico', code: 'AM' }, { name: 'Air Algérie', code: 'AH' }, { name: 'Air Arabia', code: 'G9' },
+  { name: 'Air Astana', code: 'KC' }, { name: 'Air Baltic', code: 'BT' }, { name: 'Air Canada', code: 'AC' },
+  { name: 'Air China', code: 'CA' }, { name: 'Air Europa', code: 'UX' }, { name: 'Air France', code: 'AF' },
+  { name: 'Air India', code: 'AI' }, { name: 'Air New Zealand', code: 'NZ' }, { name: 'Air Serbia', code: 'JU' },
+  { name: 'Air Transat', code: 'TS' }, { name: 'AirAsia', code: 'AK' }, { name: 'Alaska Airlines', code: 'AS' },
+  { name: 'Allegiant Air', code: 'G4' }, { name: 'American Airlines', code: 'AA' }, { name: 'ANA (All Nippon Airways)', code: 'NH' },
+  { name: 'Asiana Airlines', code: 'OZ' }, { name: 'Austrian Airlines', code: 'OS' }, { name: 'Avianca', code: 'AV' },
+  { name: 'Azul Linhas Aéreas', code: 'AD' }, { name: 'Bangkok Airways', code: 'PG' }, { name: 'British Airways', code: 'BA' },
+  { name: 'Brussels Airlines', code: 'SN' }, { name: 'Cathay Pacific', code: 'CX' }, { name: 'Cebu Pacific', code: '5J' },
+  { name: 'China Airlines', code: 'CI' }, { name: 'China Eastern Airlines', code: 'MU' }, { name: 'China Southern Airlines', code: 'CZ' },
+  { name: 'Condor', code: 'DE' }, { name: 'Copa Airlines', code: 'CM' }, { name: 'Croatia Airlines', code: 'OU' },
+  { name: 'Delta Air Lines', code: 'DL' }, { name: 'Egyptair', code: 'MS' }, { name: 'El Al', code: 'LY' },
+  { name: 'Emirates', code: 'EK' }, { name: 'Ethiopian Airlines', code: 'ET' }, { name: 'Etihad Airways', code: 'EY' },
+  { name: 'Eurowings', code: 'EW' }, { name: 'EVA Air', code: 'BR' }, { name: 'Finnair', code: 'AY' },
+  { name: 'Flybondi', code: 'FO' }, { name: 'Flydubai', code: 'FZ' }, { name: 'Frontier Airlines', code: 'F9' },
+  { name: 'Garuda Indonesia', code: 'GA' }, { name: 'Gol Linhas Aéreas', code: 'G3' }, { name: 'Gulf Air', code: 'GF' },
+  { name: 'Hainan Airlines', code: 'HU' }, { name: 'Hawaiian Airlines', code: 'HA' }, { name: 'Hong Kong Airlines', code: 'HX' },
+  { name: 'Iberia', code: 'IB' }, { name: 'Icelandair', code: 'FI' }, { name: 'IndiGo', code: '6E' },
+  { name: 'ITA Airways', code: 'AZ' }, { name: 'Japan Airlines (JAL)', code: 'JL' }, { name: 'JetBlue Airways', code: 'B6' },
+  { name: 'JetSMART', code: 'JA' }, { name: 'Jetstar Airways', code: 'JQ' }, { name: 'KLM Royal Dutch Airlines', code: 'KL' },
+  { name: 'Korean Air', code: 'KE' }, { name: 'Kuwait Airways', code: 'KU' }, { name: 'LATAM Airlines', code: 'LA' },
+  { name: 'LOT Polish Airlines', code: 'LO' }, { name: 'Lufthansa', code: 'LH' }, { name: 'Malaysia Airlines', code: 'MH' },
+  { name: 'Norwegian Air Shuttle', code: 'DY' }, { name: 'Oman Air', code: 'WY' }, { name: 'Pegasus Airlines', code: 'PC' },
+  { name: 'Philippine Airlines', code: 'PR' }, { name: 'Porter Airlines', code: 'PD' }, { name: 'Qantas', code: 'QF' },
+  { name: 'Qatar Airways', code: 'QR' }, { name: 'Royal Air Maroc', code: 'AT' }, { name: 'Royal Jordanian', code: 'RJ' },
+  { name: 'RwandAir', code: 'WB' }, { name: 'Ryanair', code: 'FR' }, { name: 'SAS Scandinavian Airlines', code: 'SK' },
+  { name: 'Saudia', code: 'SV' }, { name: 'Scoot', code: 'TR' }, { name: 'Shenzhen Airlines', code: 'ZH' },
+  { name: 'Singapore Airlines', code: 'SQ' }, { name: 'SKY Airline', code: 'H2' }, { name: 'South African Airways', code: 'SA' },
+  { name: 'Southwest Airlines', code: 'WN' }, { name: 'SpiceJet', code: 'SG' }, { name: 'Spirit Airlines', code: 'NK' },
+  { name: 'Sun Country Airlines', code: 'SY' }, { name: 'SunExpress', code: 'XQ' }, { name: 'Swiss International Air Lines', code: 'LX' },
+  { name: 'TAAG Angola Airlines', code: 'DT' }, { name: 'TAP Air Portugal', code: 'TP' }, { name: 'Thai Airways', code: 'TG' },
+  { name: 'Transavia', code: 'HV' }, { name: 'Turkish Airlines', code: 'TK' }, { name: 'United Airlines', code: 'UA' },
+  { name: 'Vietnam Airlines', code: 'VN' }, { name: 'Viva Aerobus', code: 'VB' }, { name: 'Volaris', code: 'Y4' },
+  { name: 'Vueling', code: 'VY' }, { name: 'WestJet', code: 'WS' }, { name: 'Wizz Air', code: 'W6' },
+  { name: 'Xiamen Air', code: 'MF' }
+].sort((a, b) => a.name.localeCompare(b.name));
+function trechosSemCia(data){
+  const out = [];
+  (data.voos || []).forEach((v, vi) => {
+    (v.trechos || []).forEach((t, ti) => {
+      if (!t.cia || !t.iata) {
+        const tipo = t.tipo === 'ida' ? 'IDA' : (t.tipo === 'volta' ? 'VOLTA' : 'Trecho');
+        out.push({ vi, ti, label: `${tipo}: ${t.deCidade || t.de || ''} → ${t.paraCidade || t.para || ''}${t.data ? ' · ' + t.data : ''}` });
+      }
+    });
+  });
+  return out;
+}
+let _ciaSeq = 0;
+function montarEscolhaCia(data, label, pendentes){
+  const eid = 'cia' + (_ciaSeq++);
+  const opts = AIRLINES.map(a => `<option value="${a.code}">${escapeHtml(a.name)} (${a.code})</option>`).join('');
+  const rows = pendentes.map((p, i) => `<label class="precoLabel">${escapeHtml(p.label)}
+    <select id="${eid}_s${i}">
+      <option value="">Selecione a companhia aérea…</option>
+      <option value="MULTI">Múltiplas companhias</option>
+      ${opts}
+    </select>
+  </label>`).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">Não identificamos a companhia aérea de alguns trechos${data.cliente && data.cliente.nome ? ' — ' + data.cliente.nome : ''}. Selecione abaixo:</div>
+    <div class="precoBox">${rows}</div>
+    <div class="fotoAcoes"><button class="btn p" onclick="confirmarCia('${eid}')">USAR SELEÇÃO E CONTINUAR →</button></div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._pendentes = pendentes;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function confirmarCia(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label, pendentes = el._pendentes;
+  pendentes.forEach((p, i) => {
+    const sel = $(eid + '_s' + i);
+    const val = sel ? sel.value : '';
+    const trecho = data.voos[p.vi] && data.voos[p.vi].trechos[p.ti];
+    if (!trecho || !val) return;
+    if (val === 'MULTI') { trecho.cia = 'Múltiplas companhias'; trecho.iata = 'MULTI'; }
+    else { const a = AIRLINES.find(x => x.code === val); if (a) { trecho.cia = a.name; trecho.iata = a.code; } }
+  });
+  el.remove();
+  await continuarAposVoos(data, label);
+}
 const soDocLink = t => t === 'AER' || t === 'HTL';
 async function continuarAposPreco(data, label){
+  const pendentesCia = trechosSemCia(data);
+  if (pendentesCia.length) { montarEscolhaCia(data, label, pendentesCia); return; }
+  await continuarAposVoos(data, label);
+}
+async function continuarAposVoos(data, label){
   // pacote/hotel: oferecer as fotos do destino para escolher a capa
   const temHotel = (Array.isArray(data.hoteis) && data.hoteis.length) || (data.hotel && data.hotel.nome);
   if (temHotel && (data.destinoBusca || data.destinoResumo)) {

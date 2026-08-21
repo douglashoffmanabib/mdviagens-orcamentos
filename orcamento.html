@@ -120,6 +120,7 @@
   .leg{display:grid;grid-template-columns:96px repeat(4,1fr);gap:10px;padding:13px 16px;align-items:center;font-size:14px}
   .leg .airline{font-weight:700;color:var(--navy)}
   .airlogo{height:26px;width:auto;max-width:96px;object-fit:contain;display:block;margin-bottom:3px}
+  .airline-multi{display:inline-flex;align-items:center;justify-content:center;height:26px;color:var(--navy);margin-bottom:3px}
   .leg .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block}
   .bag{color:var(--muted);font-size:13px;padding:0 16px 12px}
   .divider{height:1px;background:var(--line)}
@@ -307,7 +308,7 @@ const ORCAMENTO = {
     sub:"Maringá → Salvador · Guarajuba, BA",
     chips:["📅 01 → 06 Out 2026","🌙 5 noites","👨‍👩‍👧‍👦 2 adultos + 2 crianças","🍽️ All Inclusive"]
   },
-  resumo:[{k:"Destino",v:"Salvador, BA"},{k:"Período",v:"01–06 Out"},{k:"Viajantes",v:"4 pessoas"},{k:"Noites",v:"5"}],
+  resumo:[{k:"Destino",v:"Salvador, BA"},{k:"Período",v:"01–06 Out"},{k:"Viajantes",v:"4 pessoas"},{k:"Duração",v:"6 dias e 05 noites"}],
 
   voos:[{ rota:"Maringá → Salvador", data:"01–06/10/2026", viajantes:"2 adultos + 2 crianças",
     trechos:[
@@ -540,9 +541,14 @@ function buildExperienciaCard(e){
     </div>
   </div>`;
 }
+const PLANE_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
 function buildFlights(list){
   return list.map(f=>{
-    const legs=f.trechos.map(t=>`
+    const legs=f.trechos.map(t=>{
+      const airlineHtml = t.iata==='MULTI'
+        ? `<span class="airline-multi">${PLANE_ICON}</span>`
+        : (t.iata?`<img class="airlogo" src="https://pics.avs.io/120/40/${t.iata}.png" alt="${t.cia}" onerror="this.style.display='none'">`:'');
+      return `
       <div class="flight-head ${t.tipo}">
         <span class="fh-tipo">${t.tipo==='ida'?'🛫 IDA':'🛬 VOLTA'}</span>
         <span class="fh-data">${t.data}</span>
@@ -550,12 +556,13 @@ function buildFlights(list){
       </div>
       ${t.conexao?`<div class="conn">ℹ️ ${t.conexao}</div>`:''}
       <div class="leg">
-        <div class="airline">${t.iata?`<img class="airlogo" src="https://pics.avs.io/120/40/${t.iata}.png" alt="${t.cia}" onerror="this.style.display='none'">`:''}<span class="lbl">${t.cia}</span></div>
+        <div class="airline">${airlineHtml}<span class="lbl">${t.cia}</span></div>
         <div><b>${t.saida}</b><span class="lbl">Saída · ${t.data}</span></div>
         <div><b>${t.dur}</b><span class="lbl">Duração</span></div>
         <div><b>${t.chegada}</b><span class="lbl">Chegada · ${t.dataChegada||t.data}</span></div>
         <div><b>${t.classe}</b><span class="lbl">Classe</span></div>
-      </div><div class="divider"></div><div class="bag">🧳 ${t.bagagem}${t.aeronave?` &nbsp;·&nbsp; ✈️ ${t.aeronave}`:''}</div>`).join("");
+      </div><div class="divider"></div><div class="bag">🧳 ${t.bagagem}${t.aeronave?` &nbsp;·&nbsp; ✈️ ${t.aeronave}`:''}</div>`;
+    }).join("");
     return `<div class="card fl"><div class="fl-top"><b>${f.rota}</b> · ${f.viajantes}</div>${legs}</div>`;
   }).join("");
 }
@@ -1023,7 +1030,7 @@ function renderHotel(){
     const av=(h.tripadvisor&&h.tripadvisor.nota)?Number(h.tripadvisor.nota).toFixed(1)+' / 5':'—';
     return `<table class="vtable" style="margin-top:12px"><tbody>
       <tr><th style="text-align:left">Check-in</th><td style="text-align:left">${h.checkin||''}</td><th style="text-align:left">Check-out</th><td style="text-align:left">${h.checkout||''}</td></tr>
-      <tr><th style="text-align:left">Noites</th><td style="text-align:left">${h.noites||''}</td><th style="text-align:left">Avaliação extraída do TripAdvisor</th><td style="text-align:left">${av}</td></tr>
+      <tr><th style="text-align:left">Duração</th><td style="text-align:left">${h.noites?`${Number(h.noites)+1} dias e ${String(h.noites).padStart(2,'0')} noites`:''}</td><th style="text-align:left">Avaliação extraída do TripAdvisor</th><td style="text-align:left">${av}</td></tr>
     </tbody></table>`;
   }).join('');
   // carrossel de fotos reais + nome/estrelas/endereço/quartos/avaliações — mesmo componente do orçamento completo
