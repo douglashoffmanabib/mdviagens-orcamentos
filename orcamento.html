@@ -230,7 +230,12 @@
   .exp-carousel{position:relative;width:100%;height:100%;min-height:200px;overflow:hidden;background:#e9eef5}
   .exp-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.4s ease}
   .exp-slide.active{opacity:1}
-  .exp-legenda{position:absolute;left:0;right:0;bottom:0;background:rgba(14,28,66,.62);color:#fff;font-size:10px;text-align:center;padding:3px 6px;letter-spacing:.2px}
+  .exp-nav{position:absolute;top:50%;transform:translateY(-50%);border:none;background:rgba(0,0,0,.45);color:#fff;width:26px;height:26px;border-radius:50%;font-size:14px;line-height:1;cursor:pointer;z-index:2;padding:0}
+  .exp-nav.prev{left:6px}.exp-nav.next{right:6px}
+  .exp-dots{position:absolute;bottom:20px;left:0;right:0;display:flex;justify-content:center;gap:4px;z-index:2}
+  .exp-dots i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.55)}
+  .exp-dots i.on{background:#fff}
+  .exp-legenda{position:absolute;left:0;right:0;bottom:0;background:rgba(14,28,66,.62);color:#fff;font-size:10px;text-align:center;padding:3px 6px;letter-spacing:.2px;z-index:2}
   .exp-info{flex:1;padding:16px 18px;min-width:0}
   .exp-info>p{font-size:13.5px;color:var(--ink);opacity:.85;margin-bottom:8px}
   .exp-opiniao{margin:6px 0 10px;background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
@@ -522,6 +527,7 @@ function buildExperienciaCard(e){
     return `<div class="card">${tituloBar(e.titulo||'')}<div class="trf"><span class="ic2">${ICONS.extras}</span><div><p>${e.descricao||''}</p><p class="disclaimer-item">${DISCLAIMER_EXTRA}</p></div></div></div>`;
   }
   const slides=fotos.map((u,i)=>`<div class="exp-slide${i===0?' active':''}" style="background-image:url('${u}')"></div>`).join('');
+  const navDots=fotos.length>1?`<button type="button" class="exp-nav prev" onclick="expSlide(this,-1)">‹</button><button type="button" class="exp-nav next" onclick="expSlide(this,1)">›</button><div class="exp-dots">${fotos.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div>`:'';
   const opBlock = opinioes.length ? `<div class="exp-opiniao">
       <div class="exp-opiniao-tit">Opinião selecionada no Google:</div>
       <div class="exp-opiniao-carousel">
@@ -536,7 +542,7 @@ function buildExperienciaCard(e){
     ${tituloBar(e.titulo||'')}
     <div class="exp-card-row">
       <div class="exp-foto">
-        <div class="exp-carousel">${slides}</div>
+        <div class="exp-carousel" data-i="0">${slides}${navDots}</div>
         <div class="exp-legenda">Fotos meramente ilustrativas</div>
       </div>
       <div class="exp-info">
@@ -1040,7 +1046,7 @@ function renderHotel(){
     ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
     : '';
   const extras = (Array.isArray(D.extras)&&D.extras.length)
-    ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>`<div class="card">${tituloBar(e.titulo||'')}<div class="trf"><span class="ic2">${ICONS.extras}</span><div><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div></div>`).join('')}`
+    ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>buildExperienciaCard(e)).join('')}`
     : '';
   const pessoasH=(v.pessoas && v.pessoas>=1)?v.pessoas:1;
   const pessoasHTxt=pessoasH===1?'1 pessoa':pessoasH+' pessoas';
@@ -1119,6 +1125,16 @@ function initHeroCarousel(){
     slides.forEach((s,k)=>s.classList.toggle('active',k===i));
   }, 5000);
 }
+function expSlide(btn, dir){
+  const car=btn.closest('.exp-carousel');
+  if(!car) return;
+  const slides=car.querySelectorAll('.exp-slide');
+  if(!slides.length) return;
+  const i=((+car.dataset.i||0)+dir+slides.length)%slides.length;
+  car.dataset.i=i;
+  slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+  car.querySelectorAll('.exp-dots i').forEach((d,k)=>d.classList.toggle('on',k===i));
+}
 let _expCarouselStarted=false;
 function initExpCarousels(){
   if(_expCarouselStarted) return;
@@ -1130,6 +1146,7 @@ function initExpCarousels(){
       const i=((+car.dataset.i||0)+1)%slides.length;
       car.dataset.i=i;
       slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+      car.querySelectorAll('.exp-dots i').forEach((d,k)=>d.classList.toggle('on',k===i));
     });
   }, 4200);
   setInterval(()=>{

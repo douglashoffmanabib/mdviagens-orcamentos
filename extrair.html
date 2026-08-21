@@ -308,7 +308,7 @@ function extrasManuais(){
 }
 // ---------- Busca de fotos + opiniões reais de um passeio (Google Places) ----------
 const _extraOpinioes = {}; // id da linha -> array de {autor,nota,texto} (sempre notas 4-5)
-const MAX_FOTOS_PASSEIO = 4;
+const MAX_FOTOS_PASSEIO = 5;
 async function buscarFotosPasseio(id){
   const row = $(id);
   const titulo = (row.querySelector('.extraTitulo').value || '').trim();
