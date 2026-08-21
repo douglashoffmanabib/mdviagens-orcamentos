@@ -85,6 +85,9 @@
   .precoFixo{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
   .precoFixo b{ display:block; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; font-weight:700; }
   .precoFixo small{ display:block; margin-top:4px; font-size:11px; opacity:.65; font-style:italic; font-weight:400; }
+  .precoSemParcela{ background:#152a5e; border:1px solid var(--gold); border-radius:10px; padding:12px 14px; margin-top:10px; }
+  .precoSemParcela .precoResumoTit{ color:var(--gold); }
+  .precoSemParcela .precoLabel:first-of-type{ margin-top:8px; }
   .precoPreview{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
   .precoResumoTit{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:2px; }
   .selBox{ width:100%; background:#0a1836; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:6px 0 14px; }
@@ -622,6 +625,15 @@ function montarPreco(data, label){
       <div class="precoFixo">Número de pessoas (lido do orçamento original — não pode ser alterado aqui; para mudar, gere um novo orçamento do zero)
         <b>${qtdPessoasDefault || 1} ${(qtdPessoasDefault || 1) === 1 ? 'pessoa' : 'pessoas'}</b>
       </div>
+      ${!temParcelas ? `<div class="precoSemParcela">
+        <div class="precoResumoTit">Este documento não trouxe parcelamento — como deseja apresentar ao cliente?</div>
+        <label class="precoLabel">Em quantas vezes sem juros no cartão? (deixe em branco para mostrar só o valor total à vista)
+          <input type="number" min="1" step="1" id="${eid}_novasParcelas" oninput="atualizarPrecoExtra('${eid}')">
+        </label>
+        <label class="precoLabel">Taxa de embarque a somar na 1ª parcela (R$, opcional)
+          <input type="number" step="0.01" id="${eid}_novaTaxa" value="0" oninput="atualizarPrecoExtra('${eid}')">
+        </label>
+      </div>` : ''}
       <label class="precoLabel">Valor adicional a somar (R$) — divide automaticamente entre as parcelas
         <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
       </label>
@@ -639,34 +651,46 @@ function montarPreco(data, label){
   </div>`);
   const el = $(eid);
   el._data = data; el._label = label;
-  el._orig = { total, parcelas, valorParcela, taxaUnica };
+  el._orig = { total, parcelas, valorParcela, taxaUnica, temParcelas };
   el._pessoas = qtdPessoasDefault || 1;
   atualizarPrecoExtra(eid);
+}
+// parcelas/taxa "efetivas": as do documento quando ele já traz parcelamento, ou as que a agente
+// informar manualmente no campo "Este documento não trouxe parcelamento..." quando não trouxer.
+function parcelasEfetivas(eid, o){
+  if (o.temParcelas) return { parcelas: o.parcelas, taxa: o.taxaUnica };
+  const npEl = $(eid + '_novasParcelas');
+  const ntEl = $(eid + '_novaTaxa');
+  return {
+    parcelas: (npEl && parseInt(npEl.value, 10)) || 0,
+    taxa: (ntEl && parseFloat(ntEl.value)) || 0
+  };
 }
 function atualizarPrecoExtra(eid){
   const el = $(eid);
   const o = el._orig;
   const extra = parseFloat($(eid + '_extra').value) || 0;
   const novoTotal = o.total + extra;
+  const { parcelas: parcelasEf, taxa: taxaEf } = parcelasEfetivas(eid, o);
   let novoValorParcela = 0, novaPrimeira = 0;
-  if (o.parcelas > 0 && o.valorParcela > 0) {
-    novoValorParcela = o.valorParcela + (extra / o.parcelas);
-    novaPrimeira = novoValorParcela + o.taxaUnica;
+  if (parcelasEf > 0) {
+    novoValorParcela = (novoTotal - taxaEf) / parcelasEf;
+    novaPrimeira = novoValorParcela + taxaEf;
   }
 
   // pré-visualização igual ao que vai aparecer no orçamento final: só o valor total do pacote
   let html = `<div class="precoResumoTit">Forma de pagamento</div>`;
-  if (o.parcelas > 0 && novoValorParcela) {
-    html += `<div class="precoLinha precoTotal"><span>ATÉ ${pad2Extrair(o.parcelas)}X sem juros no cartão</span></div>`;
-    if (o.taxaUnica) {
+  if (parcelasEf > 0 && novoValorParcela) {
+    html += `<div class="precoLinha precoTotal"><span>ATÉ ${pad2Extrair(parcelasEf)}X sem juros no cartão</span></div>`;
+    if (taxaEf) {
       html += `<div class="precoLinha"><span>Primeira parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
-        <div class="precoLinha"><span>Mais ${pad2Extrair(o.parcelas - 1)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
+        <div class="precoLinha"><span>Mais ${pad2Extrair(parcelasEf - 1)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
     } else {
-      html += `<div class="precoLinha"><span>${pad2Extrair(o.parcelas)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
+      html += `<div class="precoLinha"><span>${pad2Extrair(parcelasEf)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
     }
   }
   html += `<div class="precoLinha precoTotal"><span>Valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
-  if (o.taxaUnica) html += `<div class="tinyNote">*As taxas de embarque foram incluídas na primeira parcela.</div>`;
+  if (taxaEf) html += `<div class="tinyNote">*As taxas de embarque foram incluídas na primeira parcela.</div>`;
   $(eid + '_preview').innerHTML = html;
 }
 function mostrarAjusteManual(eid){
@@ -703,9 +727,15 @@ async function confirmarPreco(eid){
       if (isFinite(primeiraManual) && isFinite(demaisManual)) v.taxaUnicaNum = Math.max(0, primeiraManual - demaisManual);
     } else {
       const extra = parseFloat($(eid + '_extra').value) || 0;
-      v.totalNum = o.total + extra;
-      if (o.parcelas > 0 && o.valorParcela > 0) v.valorParcelaNum = o.valorParcela + (extra / o.parcelas);
-      // taxaUnicaNum permanece igual — é um valor fixo (ex.: taxas de embarque), não escala com o extra
+      const novoTotal = o.total + extra;
+      v.totalNum = novoTotal;
+      const { parcelas: parcelasEf, taxa: taxaEf } = parcelasEfetivas(eid, o);
+      if (!o.temParcelas) {
+        // documento não trazia parcelamento — grava o que a agente informou manualmente
+        v.parcelas = parcelasEf || null;
+        v.taxaUnicaNum = parcelasEf ? (taxaEf || null) : null;
+      }
+      if (parcelasEf > 0) v.valorParcelaNum = (novoTotal - taxaEf) / parcelasEf;
     }
   }
   el.remove();
