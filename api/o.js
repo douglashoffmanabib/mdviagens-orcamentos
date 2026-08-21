@@ -24,7 +24,20 @@ async function redis(cmd) {
   return (await r.json()).result;
 }
 
-const BOT_UA = /facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|redditbot|Applebot|SkypeUriPreview|vkShare|Google-InspectionTool|W3C_Validator|Bitrix|Iframely|Embedly/i;
+// Crawlers "puros" (nunca são usados por uma pessoa navegando de verdade)
+const BOT_UA_PURO = /facebookexternalhit|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Pinterest|redditbot|Applebot|SkypeUriPreview|vkShare|Google-InspectionTool|W3C_Validator|Bitrix|Iframely|Embedly/i;
+
+function isPreviewBot(ua) {
+  if (!ua) return false;
+  // O robô do WhatsApp que gera a prévia do link manda um User-Agent "puro", tipo
+  // "WhatsApp/2.23.20.79 A". Mas quando uma PESSOA de verdade toca no link dentro do
+  // WhatsApp, o navegador interno dele manda um User-Agent completo de navegador
+  // (com "Mozilla/5.0 ... AppleWebKit ...") que também menciona "WhatsApp" no final —
+  // por isso só tratamos como robô quando NÃO tem "Mozilla" junto (senão é gente de verdade
+  // e cai no vazio, virando a tela em branco do card em vez do orçamento).
+  if (/WhatsApp/i.test(ua) && !/Mozilla/i.test(ua)) return true;
+  return BOT_UA_PURO.test(ua);
+}
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,10 +60,14 @@ module.exports = async (req, res) => {
     const host = req.headers.host;
     const pageUrl = proto + '://' + host + '/o/' + id;
     const imageUrl = proto + '://' + host + '/og-md-viagens.jpg';
+    const b64 = Buffer.from(val, 'utf8').toString('base64');
+    // leva o id (para o botão Baixar PDF) e o ?print=1
+    const q = '?id=' + encodeURIComponent(id) + (req.query.print ? '&print=1' : '');
+    const orcamentoUrl = proto + '://' + host + '/orcamento.html' + q + '#' + b64;
 
     // ---- Robôs de preview de link (WhatsApp, Facebook, etc.): devolve card com miniatura ----
     const ua = String(req.headers['user-agent'] || '');
-    if (BOT_UA.test(ua)) {
+    if (isPreviewBot(ua)) {
       let destino = '', cliente = '';
       try {
         const data = JSON.parse(val);
@@ -64,8 +81,12 @@ module.exports = async (req, res) => {
 
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
+      // meta refresh é ignorado pelos robôs de preview (eles só leem as tags OG e não
+      // executam nada), mas serve de rede de segurança: se por acaso alguém real cair
+      // aqui mesmo assim, a página se redireciona sozinha pro orçamento de verdade.
       return res.status(200).send(`<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8">
+<meta http-equiv="refresh" content="0;url=${escapeHtml(orcamentoUrl)}">
 <title>${escapeHtml(titulo)}</title>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MD Viagens">
@@ -80,14 +101,11 @@ module.exports = async (req, res) => {
 <meta name="twitter:description" content="${escapeHtml(descricao)}">
 <meta name="twitter:image" content="${imageUrl}">
 </head><body>
-<a href="${pageUrl}">${escapeHtml(titulo)}</a>
+<a href="${orcamentoUrl}">${escapeHtml(titulo)}</a>
 </body></html>`);
     }
 
     // ---- Pessoa de verdade: redireciona para a página montada ----
-    const b64 = Buffer.from(val, 'utf8').toString('base64');
-    // leva o id (para o botão Baixar PDF) e o ?print=1
-    const q = '?id=' + encodeURIComponent(id) + (req.query.print ? '&print=1' : '');
     res.writeHead(302, { Location: '/orcamento.html' + q + '#' + b64 });
     res.end();
   } catch (e) {
