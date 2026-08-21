@@ -494,16 +494,13 @@ function atualizarSelecaoResumo(eid){
     const vEl = $(l.id + '_v');
     if (chk && chk.checked && vEl) { soma += parseFloat(vEl.value) || 0; algumValor = true; }
   });
-  const pessoas = Math.max(1, el._pessoas || 1);
   const box = $(eid + '_resumo');
   if (!box) return;
   if (!el._temItens || !algumValor) {
     box.innerHTML = `<div class="tinyNote">Este documento não trouxe valores separados por produto — o valor total continua sendo confirmado na próxima etapa.</div>`;
     return;
   }
-  box.innerHTML = `
-    <div class="precoLinha precoTotal"><span>Resumo do valor total</span><b>${brlExtrair(soma)}</b></div>
-    <div class="precoLinha"><span>Resumo do valor por pessoa${pessoas > 1 ? ' (' + pessoas + ' pessoas)' : ''}</span><b>${brlExtrair(soma / pessoas)}</b></div>`;
+  box.innerHTML = `<div class="precoLinha precoTotal"><span>Resumo do valor total</span><b>${brlExtrair(soma)}</b></div>`;
 }
 async function continuarSemSelecao(data, label){
   await prosseguirAposSelecao(data, label);
@@ -650,7 +647,6 @@ function atualizarPrecoExtra(eid){
   const el = $(eid);
   const o = el._orig;
   const extra = parseFloat($(eid + '_extra').value) || 0;
-  const pessoas = Math.max(1, el._pessoas || 1);
   const novoTotal = o.total + extra;
   let novoValorParcela = 0, novaPrimeira = 0;
   if (o.parcelas > 0 && o.valorParcela > 0) {
@@ -658,31 +654,19 @@ function atualizarPrecoExtra(eid){
     novaPrimeira = novoValorParcela + o.taxaUnica;
   }
 
-  // pré-visualização igual ao que vai aparecer no orçamento final: valor por pessoa + total do pacote
-  const totalPP = novoTotal / pessoas;
-  const parcelaPP = novoValorParcela / pessoas;
-  const taxaPP = o.taxaUnica / pessoas;
-  const primeiraPP = parcelaPP + taxaPP;
-
-  let html = `<div class="precoResumoTit">Valor por pessoa${pessoas > 1 ? ' (' + pessoas + ' pessoas)' : ''}</div>`;
-  if (o.parcelas > 0 && parcelaPP) {
-    html += o.taxaUnica
-      ? `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros</span><b>${brlExtrair(parcelaPP)}</b></div>
-         <div class="precoLinha"><span>1ª parcela (com taxa)</span><b>${brlExtrair(primeiraPP)}</b></div>`
-      : `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros</span><b>${brlExtrair(parcelaPP)}</b></div>`;
-  }
-  html += `<div class="precoLinha"><span>Total por pessoa</span><b>${brlExtrair(totalPP)}</b></div>`;
-
-  html += `<div class="precoResumoTit" style="margin-top:14px">Valor total do pacote${pessoas > 1 ? ' para ' + pessoas + ' pessoas' : ''}</div>`;
-  html += `<div class="precoLinha precoTotal"><span>Novo valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
-  if (o.parcelas > 0 && o.valorParcela > 0) {
+  // pré-visualização igual ao que vai aparecer no orçamento final: só o valor total do pacote
+  let html = `<div class="precoResumoTit">Forma de pagamento</div>`;
+  if (o.parcelas > 0 && novoValorParcela) {
+    html += `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros no cartão</span></div>`;
     if (o.taxaUnica) {
-      html += `<div class="precoLinha"><span>Nova 1ª parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
-        <div class="precoLinha"><span>Novas ${pad2Extrair(o.parcelas - 1)} parcelas</span><b>${brlExtrair(novoValorParcela)} cada</b></div>`;
+      html += `<div class="precoLinha"><span>Primeira parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
+        <div class="precoLinha"><span>Mais ${pad2Extrair(o.parcelas - 1)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
     } else {
-      html += `<div class="precoLinha"><span>Novas ${pad2Extrair(o.parcelas)} parcelas</span><b>${brlExtrair(novoValorParcela)} cada</b></div>`;
+      html += `<div class="precoLinha"><span>${pad2Extrair(o.parcelas)}X de</span><b>${brlExtrair(novoValorParcela)}</b></div>`;
     }
   }
+  html += `<div class="precoLinha precoTotal"><span>Valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
+  if (o.taxaUnica) html += `<div class="tinyNote">*As taxas de embarque foram incluídas na primeira parcela.</div>`;
   $(eid + '_preview').innerHTML = html;
 }
 function mostrarAjusteManual(eid){
