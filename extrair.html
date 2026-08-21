@@ -649,9 +649,9 @@ async function continuarAposPreco(data, label){
   await continuarAposVoos(data, label);
 }
 async function continuarAposVoos(data, label){
-  // pacote/hotel: oferecer as fotos do destino para escolher a capa
-  const temHotel = (Array.isArray(data.hoteis) && data.hoteis.length) || (data.hotel && data.hotel.nome);
-  if (temHotel && (data.destinoBusca || data.destinoResumo)) {
+  // oferece as fotos do destino para escolher a capa — mesmo em cotações só de voo (sem hotel),
+  // que também merecem uma foto do destino no orçamento
+  if (data.destinoBusca || data.destinoResumo) {
     const fotos = await buscarFotos(data);
     if (fotos && fotos.length) { montarEscolha(data, label, fotos); return; }
   }

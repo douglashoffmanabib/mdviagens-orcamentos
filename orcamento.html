@@ -65,6 +65,8 @@
   .vtitle{color:#0e1c42;font-size:30px;font-weight:800;margin:0 0 8px}
   .vsub{color:#5a6472;font-size:14px;margin-top:3px}.vsub b{color:#26303f}
   .vsec{color:#0e1c42;font-size:16px;font-weight:800;margin:22px 0 10px;border-bottom:2px solid #eef1f6;padding-bottom:5px}
+  .vphoto{margin:4px 0 6px}
+  .vphoto .exp-carousel{min-height:220px;border-radius:12px}
   .vtable{width:100%;border-collapse:collapse;font-size:13px}
   .vtable th{background:#0e1c42;color:#fff;padding:8px 10px;text-align:center;font-size:12px}
   .vtable td{border:1px solid #e6e9ef;padding:9px 10px;text-align:center;color:#26303f}
@@ -965,6 +967,36 @@ function initMaps(){
 }
 // ===== Cotação de Voos (documento) — usada quando é só aéreo =====
 function dataExt(s){const m=/(\d{2})\/(\d{2})\/(\d{4})/.exec(s||'');if(!m)return s||'';const d=new Date(+m[3],+m[2]-1,+m[1]);const wd=['dom','seg','ter','qua','qui','sex','sáb'][d.getDay()];return `${wd}, ${s}`;}
+// Box de "Forma de pagamento" (valor total apenas, com parcelamento quando houver) — compartilhado
+// entre a cotação só de voo e a cotação só de hotel.
+function buildPagamentoSimples(v){
+  v=v||{};
+  const pad=n=>String(n).padStart(2,'0');
+  const vTemParcelas=v.parcelas>0 && v.valorParcelaNum>0;
+  const vPrimeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
+  const vpayUrgencia='<div class="vpay-urgencia">Garanta logo este preço, os preços podem mudar a qualquer momento!</div>';
+  return vTemParcelas ? `<div class="vpay-eyebrow">Forma de pagamento</div>
+      <div class="vpay-destaque">ATÉ ${pad(v.parcelas)}X SEM JUROS NO CARTÃO</div>
+      ${v.taxaUnicaNum
+        ? `<div class="vpay-l">Primeira parcela ${brl(vPrimeira)}</div>
+           <div class="vpay-l">Mais ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>`
+        : `<div class="vpay-l">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>`}
+      <div class="vpay-l vpay-total">Valor total ${brl(v.totalNum)}${v.taxasInclusas?' · taxas inclusas':''}</div>
+      ${v.taxaUnicaNum?'<div class="vpay-nota">*As taxas de embarque foram incluídas na primeira parcela.</div>':''}
+      ${vpayUrgencia}`
+    : `<div class="vpay-eyebrow">Valor do pacote</div>
+      <div class="vpay-destaque">${brl(v.totalNum)}</div>
+      ${v.taxasInclusas?'<div class="vpay-l">Taxas inclusas</div>':''}
+      ${vpayUrgencia}`;
+}
+// Foto(s) do destino — mesmo carrossel usado nos passeios, reaproveitado aqui como uma faixa única
+function buildFotoDestino(){
+  const imgs=(D.hero && Array.isArray(D.hero.imagens) && D.hero.imagens.length) ? D.hero.imagens : ((D.hero && D.hero.imagem) ? [D.hero.imagem] : []);
+  if(!imgs.length) return '';
+  const slides=imgs.map((u,i)=>`<div class="exp-slide${i===0?' active':''}" style="background-image:url('${u}')"></div>`).join('');
+  const nav=imgs.length>1?`<button type="button" class="exp-nav prev" onclick="expSlide(this,-1)">‹</button><button type="button" class="exp-nav next" onclick="expSlide(this,1)">›</button><div class="exp-dots">${imgs.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div>`:'';
+  return `<div class="vphoto"><div class="exp-carousel" data-i="0">${slides}${nav}</div></div>`;
+}
 function renderVoo(){
   const t=(D.voos&&D.voos[0]&&D.voos[0].trechos)||[];
   const cia=(t[0]&&t[0].cia)||'';
@@ -973,16 +1005,17 @@ function renderVoo(){
   const rows=t.map(x=>`<tr>
     <td>${x.tipo==='volta'?'Volta':'Ida'}</td>
     <td>${dataExt(x.data)}</td>
-    <td class="c-cia">${x.iata?`<img src="https://pics.avs.io/70/32/${x.iata}.png" alt="${x.cia}" onerror="this.replaceWith(document.createTextNode('${x.cia||''}'))">`:(x.cia||'')}</td>
+    <td class="c-cia">${x.iata==='MULTI'?`<span class="airline-multi">${PLANE_ICON}</span>`:(x.iata?`<img src="https://pics.avs.io/70/32/${x.iata}.png" alt="${x.cia}" onerror="this.replaceWith(document.createTextNode('${x.cia||''}'))">`:(x.cia||''))}</td>
     <td>${x.de} · ${x.deCidade}</td>
     <td>${x.para} · ${x.paraCidade}</td>
     <td>${x.saida||''}</td>
     <td>${x.chegada||''}</td>
-    <td>${/direto/i.test(x.conexao||'')?'Voo direto':(x.conexao?'1 parada':'—')}</td>
+    <td>${/direto/i.test(x.conexao||'')?'Voo direto':(x.conexao||'—')}</td>
   </tr>`).join('');
   const nums=t.filter(x=>x.voo).map(x=>`${x.tipo==='volta'?'volta':'ida'} voo ${x.voo}`);
   const nota=nums.length?`<div class="vnote">${nums.join(' e ')}.</div>`:'';
-  const total=(D.valores&&D.valores.totalNum)?brl(D.valores.totalNum):'';
+  const pag=buildPagamentoSimples(D.valores);
+  const foto=buildFotoDestino();
   document.getElementById('app').innerHTML=`
   <div class="vpage">
     <div class="vbar"><span>MD VIAGENS</span><span class="vbar-r">Cotação de Voos</span></div>
@@ -995,11 +1028,12 @@ function renderVoo(){
           <div class="vsub">Companhia Aérea: ${cia}${dataCot?` &nbsp;•&nbsp; Data da cotação: ${dataCot}`:''}</div>
         </div>
       </div>
+      ${foto}
       <h3 class="vsec">Itinerário</h3>
-      <table class="vtable"><thead><tr><th>Trecho</th><th>Data</th><th>Cia</th><th>Origem</th><th>Destino</th><th>Saída</th><th>Chegada</th><th>Tipo</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="vtable"><thead><tr><th>Trecho</th><th>Data</th><th>Cia</th><th>Origem</th><th>Destino</th><th>Saída</th><th>Chegada</th><th>Conexão</th></tr></thead><tbody>${rows}</tbody></table>
       ${nota}
-      <h3 class="vsec">Valor</h3>
-      <div class="vval"><span>Valor total das passagens</span> <b>${total}</b></div>
+      <h3 class="vsec">Forma de Pagamento</h3>
+      <div class="vpay">${pag}</div>
       <h3 class="vsec">Condições</h3>
       <ul class="vcond">
         <li>Qualquer alteração, remarcação ou cancelamento estará sujeito a multas e diferenças tarifárias, conforme as regras da companhia aérea.</li>
@@ -1042,22 +1076,7 @@ function renderHotel(){
   const extras = (Array.isArray(D.extras)&&D.extras.length)
     ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>buildExperienciaCard(e)).join('')}`
     : '';
-  const vTemParcelas=v.parcelas>0 && v.valorParcelaNum>0;
-  const vPrimeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
-  const vpayUrgencia='<div class="vpay-urgencia">Garanta logo este preço, os preços podem mudar a qualquer momento!</div>';
-  const pag = vTemParcelas ? `<div class="vpay-eyebrow">Forma de pagamento</div>
-      <div class="vpay-destaque">ATÉ ${pad(v.parcelas)}X SEM JUROS NO CARTÃO</div>
-      ${v.taxaUnicaNum
-        ? `<div class="vpay-l">Primeira parcela ${brl(vPrimeira)}</div>
-           <div class="vpay-l">Mais ${pad(v.parcelas-1)}X de ${brl(v.valorParcelaNum)}</div>`
-        : `<div class="vpay-l">${pad(v.parcelas)}X de ${brl(v.valorParcelaNum)}</div>`}
-      <div class="vpay-l vpay-total">Valor total ${brl(v.totalNum)}${v.taxasInclusas?' · taxas inclusas':''}</div>
-      ${v.taxaUnicaNum?'<div class="vpay-nota">*As taxas de embarque foram incluídas na primeira parcela.</div>':''}
-      ${vpayUrgencia}`
-    : `<div class="vpay-eyebrow">Valor do pacote</div>
-      <div class="vpay-destaque">${brl(v.totalNum)}</div>
-      ${v.taxasInclusas?'<div class="vpay-l">Taxas inclusas</div>':''}
-      ${vpayUrgencia}`;
+  const pag = buildPagamentoSimples(v);
   const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
   document.getElementById('app').innerHTML=`
   <div class="vpage">
