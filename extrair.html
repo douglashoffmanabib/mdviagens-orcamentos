@@ -82,6 +82,9 @@
   .precoLinha b{ color:var(--gold); }
   .precoLabel{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
   .precoLabel input{ display:block; width:100%; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
+  .precoFixo{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .precoFixo b{ display:block; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; font-weight:700; }
+  .precoFixo small{ display:block; margin-top:4px; font-size:11px; opacity:.65; font-style:italic; font-weight:400; }
   .precoPreview{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
   .precoResumoTit{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:2px; }
   .selBox{ width:100%; background:#0a1836; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:6px 0 14px; }
@@ -469,9 +472,9 @@ function montarSelecaoItens(data, label){
     <div class="fotoTitulo">O que entra neste orçamento${data.cliente && data.cliente.nome ? ' — ' + data.cliente.nome : ''}?</div>
     <div class="selBox">
       ${html}
-      <label class="precoLabel">Número de pessoas (pro resumo por pessoa abaixo)
-        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}" oninput="atualizarSelecaoResumo('${eid}')">
-      </label>
+      <div class="precoFixo">Número de pessoas (lido do orçamento original — não pode ser alterado aqui; para mudar, gere um novo orçamento do zero)
+        <b>${qtdPessoasDefault} ${qtdPessoasDefault === 1 ? 'pessoa' : 'pessoas'}</b>
+      </div>
       <div class="selResumo" id="${eid}_resumo"></div>
     </div>
     <div class="fotoAcoes">
@@ -479,7 +482,7 @@ function montarSelecaoItens(data, label){
     </div>
   </div>`);
   const el = $(eid);
-  el._data = data; el._label = label; el._linhas = linhas; el._temItens = temItens;
+  el._data = data; el._label = label; el._linhas = linhas; el._temItens = temItens; el._pessoas = qtdPessoasDefault;
   atualizarSelecaoResumo(eid);
 }
 function atualizarSelecaoResumo(eid){
@@ -491,8 +494,7 @@ function atualizarSelecaoResumo(eid){
     const vEl = $(l.id + '_v');
     if (chk && chk.checked && vEl) { soma += parseFloat(vEl.value) || 0; algumValor = true; }
   });
-  const pessoasEl = $(eid + '_pessoas');
-  const pessoas = Math.max(1, parseInt(pessoasEl && pessoasEl.value, 10) || 1);
+  const pessoas = Math.max(1, el._pessoas || 1);
   const box = $(eid + '_resumo');
   if (!box) return;
   if (!el._temItens || !algumValor) {
@@ -529,8 +531,7 @@ async function continuarAposSelecao(eid){
   if (!manterTransfer) data.transfer = null;
   if (!manterSeguro) data.seguro = null;
   if (Array.isArray(data.extras)) data.extras = data.extras.filter((_, i) => manterExtra.has(i));
-  const pessoasEl = $(eid + '_pessoas');
-  const pessoas = pessoasEl ? parseInt(pessoasEl.value, 10) : 0;
+  const pessoas = el._pessoas || 0;
   data.valores = data.valores || {};
   if (pessoas > 0) data.valores.pessoas = pessoas;
   if (algumValor) data.valores.totalNum = somaTicados;
@@ -601,9 +602,9 @@ function montarPreco(data, label){
     <div class="precoBox">
       <div class="precoLinha"><span>Valor identificado na extração</span><b>${brlExtrair(total)}</b></div>
       ${resumoOriginal ? `<div class="precoLinha"><span>Parcelamento identificado</span><b>${resumoOriginal}</b></div>` : ''}
-      <label class="precoLabel">Número de pessoas neste orçamento (pra mostrar o valor por pessoa no orçamento)
-        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}" oninput="atualizarPrecoExtra('${eid}')">
-      </label>
+      <div class="precoFixo">Número de pessoas (lido do orçamento original — não pode ser alterado aqui; para mudar, gere um novo orçamento do zero)
+        <b>${qtdPessoasDefault || 1} ${(qtdPessoasDefault || 1) === 1 ? 'pessoa' : 'pessoas'}</b>
+      </div>
       <label class="precoLabel">Valor adicional a somar (R$) — divide automaticamente entre as parcelas
         <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
       </label>
@@ -622,13 +623,14 @@ function montarPreco(data, label){
   const el = $(eid);
   el._data = data; el._label = label;
   el._orig = { total, parcelas, valorParcela, taxaUnica };
+  el._pessoas = qtdPessoasDefault || 1;
   atualizarPrecoExtra(eid);
 }
 function atualizarPrecoExtra(eid){
   const el = $(eid);
   const o = el._orig;
   const extra = parseFloat($(eid + '_extra').value) || 0;
-  const pessoas = Math.max(1, parseInt($(eid + '_pessoas').value, 10) || 1);
+  const pessoas = Math.max(1, el._pessoas || 1);
   const novoTotal = o.total + extra;
   let novoValorParcela = 0, novaPrimeira = 0;
   if (o.parcelas > 0 && o.valorParcela > 0) {
@@ -683,7 +685,7 @@ async function confirmarPreco(eid){
   const el = $(eid);
   const data = el._data, label = el._label, o = el._orig;
   const manualAberto = $(eid + '_manual').style.display !== 'none';
-  const pessoas = parseInt($(eid + '_pessoas').value, 10);
+  const pessoas = el._pessoas;
   data.valores = data.valores || {};
   if (isFinite(pessoas) && pessoas > 0) data.valores.pessoas = pessoas;
   if (data.valores) {
