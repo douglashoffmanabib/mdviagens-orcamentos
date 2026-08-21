@@ -114,7 +114,10 @@ Formato exato do JSON:
     "parcelas": número (qtd de parcelas mensais iguais),
     "valorParcelaNum": número (valor de cada parcela mensal),
     "taxaUnicaNum": número|null (valor cobrado UMA vez junto com a 1ª parcela — normalmente as taxas de embarque, ex: 147.98)
-  }
+  },
+  "itens": [
+    { "tipo": "voo" | "hotel" | "transfer" | "seguro" | "passeio", "label": "string curto identificando o item (ex.: rota do voo, nome do hotel, título do passeio)", "valorNum": número }
+  ]
 }
 
 Regras:
@@ -128,6 +131,7 @@ Regras:
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
+- "itens" (valores separados por produto): preencha esta lista SOMENTE quando o documento mostrar explicitamente os valores de CADA produto/serviço separadamente (ex.: "Aéreo: R$ 2.500,00", "Hospedagem: R$ 8.000,00", "Passeio Genipabu: R$ 350,00", "Seguro: R$ 180,00"). Cada item de "itens" deve corresponder, na ordem, a exatamente um dos voos/hotéis/passeios já listados acima nas seções "voos", "hoteis" e "extras" (um item "hotel" por hotel, na mesma ordem de "hoteis"; um item "passeio" por extra, na mesma ordem de "extras"). Se o documento só trouxer um valor TOTAL ÚNICO combinado, sem nenhum detalhamento por produto, deixe "itens" como uma lista vazia [].
 - Seja objetivo: nada de repetir informação nem escrever textos longos. Responda somente o JSON.`;
 
 module.exports = async (req, res) => {
@@ -160,7 +164,7 @@ module.exports = async (req, res) => {
     return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: a.data } };
   });
   const merge = arquivos.length > 1
-    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, transfer, seguro e extras. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente.'
+    ? '\n\nIMPORTANTE: os arquivos acima (PDFs e/ou imagens) são partes de UMA MESMA viagem (ex.: um traz o hotel e outro os voos; ou o voo de ida e o de volta separados). Combine TODAS as informações num ÚNICO orçamento: junte todos os voos em "voos" (ida e volta juntos), todos os hotéis, transfer, seguro e extras. No total, SOME os valores dos arquivos. Se só um arquivo trouxer o parcelamento, use o dele; se houver mais de um, some os totais e mantenha um parcelamento coerente. Se mais de um arquivo trouxer valores separados por produto ("itens"), junte todos numa única lista "itens".'
     : '';
   content.push({ type: 'text', text: SCHEMA_PROMPT + merge });
 
@@ -277,6 +281,11 @@ function enrich(d) {
     ? d.extras.filter(e => e && (e.titulo || e.descricao)).map(e => ({ titulo: e.titulo || '', descricao: e.descricao || '' }))
     : [];
 
+  // valores separados por produto (só vêm preenchidos quando o documento realmente detalhar por item)
+  const itens = Array.isArray(d.itens)
+    ? d.itens.filter(i => i && i.tipo && typeof i.valorNum === 'number').map(i => ({ tipo: i.tipo, label: i.label || '', valorNum: i.valorNum }))
+    : [];
+
   return {
     numero: d.numero || '',
     agencia: { nome: 'MD Viagens · Milhas e Destinos' },
@@ -306,6 +315,7 @@ function enrich(d) {
     transfer: d.transfer || null,
     seguro: d.seguro || null,
     extras,
+    itens,
     valores: {
       totalNum: (d.valores && d.valores.totalNum) || 0,
       taxasInclusas: !!(d.valores && d.valores.taxasInclusas),
