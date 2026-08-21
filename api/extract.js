@@ -89,7 +89,7 @@ Formato exato do JSON:
           "voo": "número do voo se aparecer (ex: G3 1137), senão null",
           "saida": "HH:MM", "chegada": "HH:MM", "dur": "ex: 4h15",
           "classe": "ex: Econômica",
-          "conexao": "texto da conexão, ou 'Voo direto'",
+          "conexao": "descreva a conexão citando cidade/aeroporto e tempo de espera quando o documento mostrar (ex.: 'Conexão em Guarulhos (GRU) · 2h30 de espera'); use 'Voo direto' se não houver escala",
           "bagagem": "ex: Não inclui bagagem despachada"
         }
       ]
