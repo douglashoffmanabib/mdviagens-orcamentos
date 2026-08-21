@@ -716,27 +716,34 @@ async function confirmarPreco(eid){
   const pessoas = el._pessoas;
   data.valores = data.valores || {};
   if (isFinite(pessoas) && pessoas > 0) data.valores.pessoas = pessoas;
-  if (data.valores) {
-    const v = data.valores;
-    if (manualAberto) {
-      const totalManual = parseFloat($(eid + '_totalManual').value);
-      const primeiraManual = $(eid + '_primeiraManual') ? parseFloat($(eid + '_primeiraManual').value) : NaN;
-      const demaisManual = $(eid + '_demaisManual') ? parseFloat($(eid + '_demaisManual').value) : NaN;
-      if (isFinite(totalManual)) v.totalNum = totalManual;
-      if (isFinite(demaisManual)) v.valorParcelaNum = demaisManual;
-      if (isFinite(primeiraManual) && isFinite(demaisManual)) v.taxaUnicaNum = Math.max(0, primeiraManual - demaisManual);
-    } else {
-      const extra = parseFloat($(eid + '_extra').value) || 0;
-      const novoTotal = o.total + extra;
-      v.totalNum = novoTotal;
-      const { parcelas: parcelasEf, taxa: taxaEf } = parcelasEfetivas(eid, o);
-      if (!o.temParcelas) {
-        // documento não trazia parcelamento — grava o que a agente informou manualmente
-        v.parcelas = parcelasEf || null;
-        v.taxaUnicaNum = parcelasEf ? (taxaEf || null) : null;
-      }
-      if (parcelasEf > 0) v.valorParcelaNum = (novoTotal - taxaEf) / parcelasEf;
+  const v = data.valores;
+
+  // se o documento não trouxe parcelamento, o que a agente informou no campo dedicado
+  // ("Em quantas vezes sem juros no cartão?") sempre vale — mesmo que ela também tenha
+  // aberto o ajuste manual — senão a forma de pagamento acaba não indo pro orçamento final.
+  const { parcelas: parcelasEf, taxa: taxaEf } = parcelasEfetivas(eid, o);
+  if (!o.temParcelas) {
+    v.parcelas = parcelasEf || null;
+    v.taxaUnicaNum = parcelasEf ? (taxaEf || null) : null;
+  }
+
+  if (manualAberto) {
+    const totalManual = parseFloat($(eid + '_totalManual').value);
+    const primeiraManual = $(eid + '_primeiraManual') ? parseFloat($(eid + '_primeiraManual').value) : NaN;
+    const demaisManual = $(eid + '_demaisManual') ? parseFloat($(eid + '_demaisManual').value) : NaN;
+    if (isFinite(totalManual)) v.totalNum = totalManual;
+    if (isFinite(demaisManual)) v.valorParcelaNum = demaisManual;
+    if (isFinite(primeiraManual) && isFinite(demaisManual)) v.taxaUnicaNum = Math.max(0, primeiraManual - demaisManual);
+    // sem parcelamento no doc e sem override manual de parcela: usa o valor calculado a partir
+    // do campo "Em quantas vezes sem juros" mesmo com o ajuste manual aberto (ex.: só mexeu no total)
+    if (!o.temParcelas && !isFinite(demaisManual) && parcelasEf > 0) {
+      v.valorParcelaNum = ((isFinite(totalManual) ? totalManual : o.total) - taxaEf) / parcelasEf;
     }
+  } else {
+    const extra = parseFloat($(eid + '_extra').value) || 0;
+    const novoTotal = o.total + extra;
+    v.totalNum = novoTotal;
+    if (parcelasEf > 0) v.valorParcelaNum = (novoTotal - taxaEf) / parcelasEf;
   }
   el.remove();
   await continuarAposPreco(data, label);
