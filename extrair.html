@@ -569,6 +569,26 @@ async function continuarAposPreco(data, label){
 }
 function brlExtrair(n){ return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function pad2Extrair(n){ return String(n).padStart(2, '0'); }
+function contarViajantesTexto(txt){
+  txt = String(txt || '');
+  let total = 0, achou = false;
+  // conta adultos/crianças/bebês nominalmente (ex.: "2 adulto(s) + 1 criança(s): 6 anos" -> 2+1,
+  // ignorando o "6 anos" que é a idade da criança, não mais uma pessoa)
+  const partes = [
+    /(\d+)\s*adultos?/i,
+    /(\d+)\s*crian[çc]as?/i,
+    /(\d+)\s*beb[êe]s?/i
+  ];
+  for (const re of partes) {
+    const m = txt.match(re);
+    if (m) { total += parseInt(m[1], 10) || 0; achou = true; }
+  }
+  if (achou) return total;
+  // formato sem "adulto/criança" (ex.: "4 viajantes"): soma os números encontrados
+  const nums = txt.match(/\d+/g);
+  if (nums) { const soma = nums.reduce((a, b) => a + parseInt(b, 10), 0); if (soma > 0) return soma; }
+  return 0;
+}
 function extrairQtdPessoas(data){
   const fontes = [];
   if (Array.isArray(data.resumo)) { const r = data.resumo.find(s => /viajante/i.test(s.k || '')); if (r) fontes.push(r.v); }
@@ -577,8 +597,8 @@ function extrairQtdPessoas(data){
   if (Array.isArray(data.hoteis) && data.hoteis[0] && Array.isArray(data.hoteis[0].quartos) && data.hoteis[0].quartos[0]) fontes.push(data.hoteis[0].quartos[0].ocupacao);
   for (const txt of fontes) {
     if (!txt) continue;
-    const nums = String(txt).match(/\d+/g);
-    if (nums) { const soma = nums.reduce((a, b) => a + parseInt(b, 10), 0); if (soma > 0) return soma; }
+    const n = contarViajantesTexto(txt);
+    if (n > 0) return n;
   }
   return '';
 }
