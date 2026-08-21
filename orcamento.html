@@ -82,7 +82,8 @@
   .vpay-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;opacity:.7;margin-bottom:2px}
   .vpay-destaque{font-size:20px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:5px}
   .vpay-nota{font-size:10.5px;font-style:italic;opacity:.7;margin-bottom:8px}
-  .vpay-l{font-size:13.5px;font-weight:700;margin-bottom:4px}
+  .vpay-l{font-size:12px;font-weight:400;color:rgba(255,255,255,.72);margin-bottom:4px;line-height:1.4}
+  .vpay-l b{font-weight:700;color:#fff}
   .vpay-l span{font-size:11.5px;font-weight:500;opacity:.85}
   .vpay-t{font-size:11.5px;opacity:.85;margin-top:10px}
   .vpay-divider{height:1px;background:rgba(255,255,255,.15);margin:14px 0 10px}
@@ -155,16 +156,20 @@
   .review .who{font-weight:700;color:var(--navy);font-size:13px}
   .review .b{color:#00aa6c;font-size:12px}
 
+  /* Barra de título das Experiências Inclusas (transfer/seguro/passeios) */
+  .card-titulo-bar{background:var(--navy);color:var(--gold);display:flex;align-items:center;gap:8px;padding:9px 16px;font-weight:800;font-size:13.5px;letter-spacing:.4px;text-transform:uppercase}
+  .card-titulo-bar svg{flex:0 0 auto}
+
   /* TRANSFER */
   .trf{display:flex;gap:14px;align-items:center;padding:15px 18px}
   .trf .ic2{color:var(--navy);opacity:.55;flex:0 0 auto;display:flex}
   .ic2 svg{width:25px;height:25px}
-  .trf h4{color:var(--navy);font-size:16.5px;font-weight:800;letter-spacing:.1px;margin-bottom:3px}.trf p{font-size:13px;color:var(--muted)}
+  .trf p{font-size:13px;color:var(--muted)}
 
   /* INSURANCE */
   .ins{display:flex;gap:16px;align-items:center;padding:15px 18px}
   .ins .badge{background:#e2231a;color:#fff;font-weight:800;border-radius:8px;padding:11px 13px;font-size:12px;text-align:center;line-height:1.1}
-  .ins h4{color:var(--navy);font-size:16.5px;font-weight:800;letter-spacing:.1px;margin-bottom:3px}.ins p{font-size:13px;color:var(--muted)}
+  .ins p{font-size:13px;color:var(--muted)}
   .tiny{font-size:11.5px;color:var(--muted);line-height:1.55}
   .disclaimer-item{font-size:11.5px;color:var(--muted);font-style:italic;margin-top:8px;line-height:1.5}
   .aviso-retirada{color:#c0392b;font-size:12px;line-height:1.5;margin-top:10px}
@@ -199,10 +204,10 @@
   .inv-eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.7;margin-bottom:3px}
   .inv-destaque{font-family:'Poppins',sans-serif;font-size:24px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:6px}
   .inv-nota{font-size:11.5px;font-style:italic;opacity:.7;margin-bottom:12px}
-  .inv-resumo-tit{font-size:12px;font-weight:700;opacity:.75;margin:2px 0 4px}
-  .inv-resumo-linha{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
-  .inv-resumo-total{margin-top:4px;padding-top:9px;border-top:1px dashed rgba(255,255,255,.18)}
-  .inv-total-linha{font-family:'Poppins',sans-serif;font-size:17px;font-weight:800;color:#fff;margin:2px 0 6px}
+  .inv-resumo-tit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.6;margin:2px 0 5px}
+  .inv-resumo-linha{font-size:13px;font-weight:400;color:rgba(255,255,255,.72);margin-bottom:4px;line-height:1.4}
+  .inv-resumo-total{margin-top:6px;padding-top:10px;border-top:1px dashed rgba(255,255,255,.18);font-family:'Poppins',sans-serif;font-size:14.5px;font-weight:700;color:#fff;opacity:1}
+  .inv-total-linha{font-family:'Poppins',sans-serif;font-size:16.5px;font-weight:800;color:#fff;margin:2px 0 6px}
   .inv-divider{height:1px;background:rgba(255,255,255,.15);margin:20px 0 16px}
   .inv-rodape{font-size:11.5px;opacity:.6;margin-top:8px;font-style:italic}
   .inv-validade{font-size:11.5px;opacity:.8;line-height:1.55;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)}
@@ -219,14 +224,14 @@
   .aviso-roteiro-tag{background:var(--gold);color:#1b1b1b;font-weight:800;font-size:10px;letter-spacing:.4px;padding:2px 7px;border-radius:4px;display:inline-block;vertical-align:middle;margin-right:7px}
   .extra-fotos{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
   .extra-fotos img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block}
-  .exp-card{display:flex;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;background:var(--card);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .exp-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:16px;background:var(--card);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+  .exp-card-row{display:flex}
   .exp-foto{position:relative;flex:0 0 240px}
   .exp-carousel{position:relative;width:100%;height:100%;min-height:200px;overflow:hidden;background:#e9eef5}
   .exp-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.4s ease}
   .exp-slide.active{opacity:1}
   .exp-legenda{position:absolute;left:0;right:0;bottom:0;background:rgba(14,28,66,.62);color:#fff;font-size:10px;text-align:center;padding:3px 6px;letter-spacing:.2px}
   .exp-info{flex:1;padding:16px 18px;min-width:0}
-  .exp-info h4{font-size:17px;font-weight:800;letter-spacing:.1px;color:var(--navy);margin-bottom:6px}
   .exp-info>p{font-size:13.5px;color:var(--ink);opacity:.85;margin-bottom:8px}
   .exp-opiniao{margin:6px 0 10px;background:#f7f8fb;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
   .exp-opiniao-tit{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--gold-d);margin-bottom:5px}
@@ -235,7 +240,7 @@
   .exp-op-estrelas{color:var(--gold);font-size:13px;letter-spacing:1px}
   .exp-op-txt{font-size:12.5px;font-style:italic;color:var(--ink);margin:4px 0}
   .exp-op-autor{font-size:11.5px;color:var(--muted);text-align:right}
-  @media(max-width:640px){.exp-card{flex-direction:column}.exp-foto{flex:0 0 170px;width:100%}}
+  @media(max-width:640px){.exp-card-row{flex-direction:column}.exp-foto{flex:0 0 170px;width:100%}}
   .revert-banner{background:var(--gold);color:#1b1b1b;text-align:center;padding:14px 16px}
   .revert-banner .rb-title{font-family:'Poppins',sans-serif;font-weight:800;font-size:14.5px;letter-spacing:.3px}
   .revert-banner .rb-sub{font-size:12px;margin-top:4px;opacity:.85}
@@ -422,6 +427,9 @@ const ICONS = {
   porque: svgIc('<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>'),
   quemsomos: svgIc('<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>')
 };
+// Estrelinha (SVG de verdade, não emoji) usada na barra de título das Experiências Inclusas
+const STAR_ICON='<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+function tituloBar(texto){ return `<div class="card-titulo-bar">${STAR_ICON}<span>${texto}</span></div>`; }
 
 // Resuminho de "o que está incluso" — mostrado perto do valor total, pra gerar valor percebido.
 function buildInclusoes(){
@@ -511,7 +519,7 @@ function buildExperienciaCard(e){
   const fotos=Array.isArray(e.fotos)?e.fotos:[];
   const opinioes=Array.isArray(e.opinioes)?e.opinioes:[];
   if(!fotos.length){
-    return `<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p><p class="disclaimer-item">${DISCLAIMER_EXTRA}</p></div></div>`;
+    return `<div class="card">${tituloBar(e.titulo||'')}<div class="trf"><span class="ic2">${ICONS.extras}</span><div><p>${e.descricao||''}</p><p class="disclaimer-item">${DISCLAIMER_EXTRA}</p></div></div></div>`;
   }
   const slides=fotos.map((u,i)=>`<div class="exp-slide${i===0?' active':''}" style="background-image:url('${u}')"></div>`).join('');
   const opBlock = opinioes.length ? `<div class="exp-opiniao">
@@ -525,15 +533,17 @@ function buildExperienciaCard(e){
       </div>
     </div>` : '';
   return `<div class="exp-card">
-    <div class="exp-foto">
-      <div class="exp-carousel">${slides}</div>
-      <div class="exp-legenda">Fotos meramente ilustrativas</div>
-    </div>
-    <div class="exp-info">
-      <h4>${e.titulo||''}</h4>
-      <p>${e.descricao||''}</p>
-      ${opBlock}
-      <p class="disclaimer-item">${DISCLAIMER_EXTRA}</p>
+    ${tituloBar(e.titulo||'')}
+    <div class="exp-card-row">
+      <div class="exp-foto">
+        <div class="exp-carousel">${slides}</div>
+        <div class="exp-legenda">Fotos meramente ilustrativas</div>
+      </div>
+      <div class="exp-info">
+        <p>${e.descricao||''}</p>
+        ${opBlock}
+        <p class="disclaimer-item">${DISCLAIMER_EXTRA}</p>
+      </div>
     </div>
   </div>`;
 }
@@ -670,10 +680,10 @@ function render(){
     ${temExperiencias?`<div id="experiencias">
     <div class="sec-head"><span class="ic">${ICONS.extras}</span><h2>Experiências Inclusas</h2></div>
     ${!enxuto?(D.transfer
-        ?`<div class="card trf"><span class="ic2">${ICONS.transfer}</span><div><h4>${D.transfer.tipo}</h4><p>${D.transfer.trajeto}<br>${D.transfer.detalhe}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`
-        :`<div class="card trf"><span class="ic2">${ICONS.transfer}</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div>`):''}
+        ?`<div class="card">${tituloBar('Transfer')}<div class="trf"><span class="ic2">${ICONS.transfer}</span><div><p>${[D.transfer.tipo,D.transfer.trajeto].filter(Boolean).join(' · ')}<br>${D.transfer.detalhe||''}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div></div>`
+        :`<div class="card">${tituloBar('Transfer')}<div class="trf"><span class="ic2">${ICONS.transfer}</span><div><p class="tiny">Transfer não incluso nessa cotação. Solicite uma cotação com nossa agência.</p></div></div></div>`):''}
 
-    ${D.seguro?`<div class="card ins"><div class="badge">ASSIST<br>CARD</div><div><h4>${D.seguro.nome}</h4><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div>`:''}
+    ${D.seguro?`<div class="card">${tituloBar(D.seguro.nome||'Seguro Viagem')}<div class="ins"><div class="badge">ASSIST<br>CARD</div><div><p>${D.seguro.plano} · ${D.seguro.periodo} · ${D.seguro.viajantes}</p><p class="disclaimer-item">Este item pode ser retirado do pacote e seu valor retirado proporcionalmente, por favor, nos avise para ajustarmos.</p></div></div></div>`:''}
 
     ${temExtras?D.extras.map(e=>buildExperienciaCard(e)).join(''):''}
 
@@ -1030,7 +1040,7 @@ function renderHotel(){
     ? `<h3 class="vsec">Localização</h3><div class="map-split ${hoteis.length>1?'two':'one'}">${hoteis.map((h,i)=>`<div class="card mini"><div class="cap">📍 ${h.cidade?h.cidade+' · ':''}${h.nome}</div><div id="hotelmap${i}" class="minimap"></div></div>`).join('')}</div>`
     : '';
   const extras = (Array.isArray(D.extras)&&D.extras.length)
-    ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div>`).join('')}`
+    ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>`<div class="card">${tituloBar(e.titulo||'')}<div class="trf"><span class="ic2">${ICONS.extras}</span><div><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div></div>`).join('')}`
     : '';
   const pessoasH=(v.pessoas && v.pessoas>=1)?v.pessoas:1;
   const pessoasHTxt=pessoasH===1?'1 pessoa':pessoasH+' pessoas';

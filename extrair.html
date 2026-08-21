@@ -83,6 +83,14 @@
   .precoLabel{ display:block; font-size:12.5px; color:var(--muted); margin-top:10px; }
   .precoLabel input{ display:block; width:100%; margin-top:5px; background:#152a5e; border:1px solid var(--line); border-radius:10px; color:var(--ink); padding:11px 13px; font-size:14px; font-family:inherit; }
   .precoPreview{ margin-top:10px; border-top:1px dashed var(--line); padding-top:8px; }
+  .precoResumoTit{ font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:2px; }
+  .selBox{ width:100%; background:#0a1836; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:6px 0 14px; }
+  .selItem{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.06); cursor:pointer; }
+  .selItem:last-of-type{ border-bottom:none; }
+  .selItem input[type=checkbox]{ width:17px; height:17px; flex:0 0 auto; accent-color:var(--gold); }
+  .selItemTxt{ flex:1; font-size:13.5px; color:var(--ink); }
+  .selValor{ width:110px; flex:0 0 auto; background:#152a5e; border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:7px 9px; font-size:13px; font-family:inherit; text-align:right; }
+  .selResumo{ margin-top:12px; border-top:1px dashed var(--line); padding-top:10px; }
   .precoManualToggle{ margin-top:12px; }
   .precoManualToggle a{ color:var(--gold); font-size:12.5px; text-decoration:underline; cursor:pointer; }
   .precoManual{ margin-top:6px; padding-top:6px; border-top:1px solid var(--line); }
@@ -421,27 +429,132 @@ async function gerar(arquivos, label){
     const aviso = avisoRoteiroSelecionado();
     if (aviso) j.data.avisoRoteiro = aviso;
 
-    // se a IA já encontrou passeios/extras dentro do documento, mostra eles na tela (com opção
-    // de buscar fotos e opiniões no Google ou subir foto manual) antes de continuar — em vez de
-    // simplesmente incluí-los sem chance de adicionar fotos, como acontecia antes.
-    const aiExtras = Array.isArray(j.data.extras) ? j.data.extras : [];
-    delete j.data.extras;
-    aiExtras.forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || [], e.opinioes || []));
-    if (aiExtras.length) { montarRevisaoExtras(j.data, label, aiExtras.length); return; }
-
-    // sem passeios detectados pela IA: só os extras manuais que já estavam na tela entram
-    const manual = extrasManuais();
-    if (manual.length) j.data.extras = manual;
-
-    // antes de seguir, confirme (ou ajuste) o valor final da proposta
-    if (j.data.valores && typeof j.data.valores.totalNum === 'number') {
-      montarPreco(j.data, label);
-      return;
-    }
-    await continuarAposPreco(j.data, label);
+    montarSelecaoItens(j.data, label);
   } catch(e){
     addCard({ ok:false, arquivo:label, erro:String(e) });
   }
+}
+// ---------- O que entra no orçamento: seleção com checkbox + valores por produto (quando o documento trouxer) ----------
+let _selSeq = 0;
+function montarSelecaoItens(data, label){
+  const eid = 'sel' + (_selSeq++);
+  const itens = Array.isArray(data.itens) ? data.itens : [];
+  const porTipo = t => itens.filter(i => i.tipo === t);
+  const itVoo = porTipo('voo'), itHotel = porTipo('hotel'), itTransfer = porTipo('transfer'), itSeguro = porTipo('seguro'), itPasseio = porTipo('passeio');
+  const temItens = itens.length > 0;
+  const linhas = [];
+  function linhaHtml(categoria, arrIdx, titulo, valor){
+    const id = eid + '_c' + linhas.length;
+    linhas.push({ id, categoria, arrIdx });
+    const valorInput = (typeof valor === 'number')
+      ? `<input type="number" step="0.01" class="selValor" id="${id}_v" value="${valor.toFixed(2)}" oninput="atualizarSelecaoResumo('${eid}')">`
+      : '';
+    return `<label class="selItem">
+      <input type="checkbox" id="${id}" checked onchange="atualizarSelecaoResumo('${eid}')">
+      <span class="selItemTxt">${escapeHtml(titulo)}</span>
+      ${valorInput}
+    </label>`;
+  }
+  let html = '';
+  if (data.voos && data.voos.length) html += linhaHtml('voo', 0, 'Voo' + (data.voos[0].rota ? ' — ' + data.voos[0].rota : ''), itVoo[0] && itVoo[0].valorNum);
+  (data.hoteis || []).forEach((h, i) => { html += linhaHtml('hotel', i, 'Hotel: ' + (h.nome || ('#' + (i + 1))), itHotel[i] && itHotel[i].valorNum); });
+  if (data.transfer) html += linhaHtml('transfer', 0, 'Transfer', itTransfer[0] && itTransfer[0].valorNum);
+  if (data.seguro) html += linhaHtml('seguro', 0, 'Seguro viagem', itSeguro[0] && itSeguro[0].valorNum);
+  (data.extras || []).forEach((e, i) => { html += linhaHtml('passeio', i, e.titulo || ('Passeio/Extra ' + (i + 1)), itPasseio[i] && itPasseio[i].valorNum); });
+
+  if (!html) { continuarSemSelecao(data, label); return; }
+
+  const qtdPessoasDefault = extrairQtdPessoas(data) || 1;
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">O que entra neste orçamento${data.cliente && data.cliente.nome ? ' — ' + data.cliente.nome : ''}?</div>
+    <div class="selBox">
+      ${html}
+      <label class="precoLabel">Número de pessoas (pro resumo por pessoa abaixo)
+        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}" oninput="atualizarSelecaoResumo('${eid}')">
+      </label>
+      <div class="selResumo" id="${eid}_resumo"></div>
+    </div>
+    <div class="fotoAcoes">
+      <button class="btn p" onclick="continuarAposSelecao('${eid}')">USAR ESTA SELEÇÃO E CONTINUAR →</button>
+    </div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._linhas = linhas; el._temItens = temItens;
+  atualizarSelecaoResumo(eid);
+}
+function atualizarSelecaoResumo(eid){
+  const el = $(eid);
+  if (!el) return;
+  let soma = 0, algumValor = false;
+  el._linhas.forEach(l => {
+    const chk = $(l.id);
+    const vEl = $(l.id + '_v');
+    if (chk && chk.checked && vEl) { soma += parseFloat(vEl.value) || 0; algumValor = true; }
+  });
+  const pessoasEl = $(eid + '_pessoas');
+  const pessoas = Math.max(1, parseInt(pessoasEl && pessoasEl.value, 10) || 1);
+  const box = $(eid + '_resumo');
+  if (!box) return;
+  if (!el._temItens || !algumValor) {
+    box.innerHTML = `<div class="tinyNote">Este documento não trouxe valores separados por produto — o valor total continua sendo confirmado na próxima etapa.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="precoLinha precoTotal"><span>Resumo do valor total</span><b>${brlExtrair(soma)}</b></div>
+    <div class="precoLinha"><span>Resumo do valor por pessoa${pessoas > 1 ? ' (' + pessoas + ' pessoas)' : ''}</span><b>${brlExtrair(soma / pessoas)}</b></div>`;
+}
+async function continuarSemSelecao(data, label){
+  await prosseguirAposSelecao(data, label);
+}
+async function continuarAposSelecao(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label, linhas = el._linhas || [];
+  const manterHotel = new Set(), manterExtra = new Set();
+  let manterVoo = true, manterTransfer = true, manterSeguro = true, somaTicados = 0, algumValor = false;
+  linhas.forEach(l => {
+    const chk = $(l.id);
+    const ticado = chk ? chk.checked : true;
+    if (l.categoria === 'voo' && !ticado) manterVoo = false;
+    if (l.categoria === 'transfer' && !ticado) manterTransfer = false;
+    if (l.categoria === 'seguro' && !ticado) manterSeguro = false;
+    if (l.categoria === 'hotel' && ticado) manterHotel.add(l.arrIdx);
+    if (l.categoria === 'passeio' && ticado) manterExtra.add(l.arrIdx);
+    if (ticado) {
+      const vEl = $(l.id + '_v');
+      if (vEl) { somaTicados += parseFloat(vEl.value) || 0; algumValor = true; }
+    }
+  });
+  if (!manterVoo) data.voos = [];
+  if (Array.isArray(data.hoteis)) data.hoteis = data.hoteis.filter((_, i) => manterHotel.has(i));
+  if (!manterTransfer) data.transfer = null;
+  if (!manterSeguro) data.seguro = null;
+  if (Array.isArray(data.extras)) data.extras = data.extras.filter((_, i) => manterExtra.has(i));
+  const pessoasEl = $(eid + '_pessoas');
+  const pessoas = pessoasEl ? parseInt(pessoasEl.value, 10) : 0;
+  data.valores = data.valores || {};
+  if (pessoas > 0) data.valores.pessoas = pessoas;
+  if (algumValor) data.valores.totalNum = somaTicados;
+  el.remove();
+  await prosseguirAposSelecao(data, label);
+}
+async function prosseguirAposSelecao(data, label){
+  // se a IA já encontrou passeios/extras dentro do documento (e ficaram marcados), mostra eles na
+  // tela (com opção de buscar fotos e opiniões no Google ou subir foto manual) antes de continuar.
+  const aiExtras = Array.isArray(data.extras) ? data.extras : [];
+  delete data.extras;
+  aiExtras.forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || [], e.opinioes || []));
+  if (aiExtras.length) { montarRevisaoExtras(data, label, aiExtras.length); return; }
+
+  // sem passeios detectados pela IA: só os extras manuais que já estavam na tela entram
+  const manual = extrasManuais();
+  if (manual.length) data.extras = manual;
+
+  // antes de seguir, confirme (ou ajuste) o valor final da proposta
+  if (data.valores && typeof data.valores.totalNum === 'number') {
+    montarPreco(data, label);
+    return;
+  }
+  await continuarAposPreco(data, label);
 }
 const soDocLink = t => t === 'AER' || t === 'HTL';
 async function continuarAposPreco(data, label){
@@ -489,7 +602,7 @@ function montarPreco(data, label){
       <div class="precoLinha"><span>Valor identificado na extração</span><b>${brlExtrair(total)}</b></div>
       ${resumoOriginal ? `<div class="precoLinha"><span>Parcelamento identificado</span><b>${resumoOriginal}</b></div>` : ''}
       <label class="precoLabel">Número de pessoas neste orçamento (pra mostrar o valor por pessoa no orçamento)
-        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}">
+        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}" oninput="atualizarPrecoExtra('${eid}')">
       </label>
       <label class="precoLabel">Valor adicional a somar (R$) — divide automaticamente entre as parcelas
         <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
@@ -515,13 +628,33 @@ function atualizarPrecoExtra(eid){
   const el = $(eid);
   const o = el._orig;
   const extra = parseFloat($(eid + '_extra').value) || 0;
+  const pessoas = Math.max(1, parseInt($(eid + '_pessoas').value, 10) || 1);
   const novoTotal = o.total + extra;
-  let html = `<div class="precoLinha precoTotal"><span>Novo valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
+  let novoValorParcela = 0, novaPrimeira = 0;
   if (o.parcelas > 0 && o.valorParcela > 0) {
-    const porParcela = extra / o.parcelas;
-    const novoValorParcela = o.valorParcela + porParcela;
+    novoValorParcela = o.valorParcela + (extra / o.parcelas);
+    novaPrimeira = novoValorParcela + o.taxaUnica;
+  }
+
+  // pré-visualização igual ao que vai aparecer no orçamento final: valor por pessoa + total do pacote
+  const totalPP = novoTotal / pessoas;
+  const parcelaPP = novoValorParcela / pessoas;
+  const taxaPP = o.taxaUnica / pessoas;
+  const primeiraPP = parcelaPP + taxaPP;
+
+  let html = `<div class="precoResumoTit">Valor por pessoa${pessoas > 1 ? ' (' + pessoas + ' pessoas)' : ''}</div>`;
+  if (o.parcelas > 0 && parcelaPP) {
+    html += o.taxaUnica
+      ? `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros</span><b>${brlExtrair(parcelaPP)}</b></div>
+         <div class="precoLinha"><span>1ª parcela (com taxa)</span><b>${brlExtrair(primeiraPP)}</b></div>`
+      : `<div class="precoLinha precoTotal"><span>${pad2Extrair(o.parcelas)}X sem juros</span><b>${brlExtrair(parcelaPP)}</b></div>`;
+  }
+  html += `<div class="precoLinha"><span>Total por pessoa</span><b>${brlExtrair(totalPP)}</b></div>`;
+
+  html += `<div class="precoResumoTit" style="margin-top:14px">Valor total do pacote${pessoas > 1 ? ' para ' + pessoas + ' pessoas' : ''}</div>`;
+  html += `<div class="precoLinha precoTotal"><span>Novo valor total</span><b>${brlExtrair(novoTotal)}</b></div>`;
+  if (o.parcelas > 0 && o.valorParcela > 0) {
     if (o.taxaUnica) {
-      const novaPrimeira = novoValorParcela + o.taxaUnica;
       html += `<div class="precoLinha"><span>Nova 1ª parcela</span><b>${brlExtrair(novaPrimeira)}</b></div>
         <div class="precoLinha"><span>Novas ${pad2Extrair(o.parcelas - 1)} parcelas</span><b>${brlExtrair(novoValorParcela)} cada</b></div>`;
     } else {
