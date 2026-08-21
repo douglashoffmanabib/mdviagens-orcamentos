@@ -260,10 +260,12 @@ function enrich(d) {
 
   // ---- chips do topo (sem emojis) ----
   const noitesTotal = hoteis.reduce((s, h) => s + (Number(h.noites) || 0), 0);
+  const diasTotal = noitesTotal ? noitesTotal + 1 : 0;
+  const duracaoTxt = noitesTotal ? `${diasTotal} dias e ${String(noitesTotal).padStart(2, '0')} noites` : '';
   const chips = [];
   if (ida && volta) chips.push(`${ida.data} a ${volta.data}`);
   else if (ida && ida.data) chips.push(ida.data);
-  if (noitesTotal) chips.push(`${noitesTotal} noites`);
+  if (duracaoTxt) chips.push(duracaoTxt);
   if (hoteis.length > 1) chips.push(`${hoteis.length} hotéis`);
   if (viajantes) chips.push(viajantes);
   if (hoteis.some(h => (h.quartos || []).some(q => /all inclusive|tudo incluso/i.test(q.plano || '')))) chips.push('All Inclusive');
@@ -306,7 +308,7 @@ function enrich(d) {
       { k: 'Destino', v: d.destinoResumo || '' },
       { k: 'Período', v: periodo },
       { k: 'Viajantes', v: viajantes },
-      { k: 'Noites', v: noitesTotal || '' }
+      { k: 'Duração', v: duracaoTxt }
     ],
     mapaVoo,
     voos,
