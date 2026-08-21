@@ -387,6 +387,29 @@ function avisoRoteiroSelecionado(){
   const v = sel ? sel.value : '';
   return v ? (AVISO_ROTEIRO_TEXTOS[v] || null) : null;
 }
+let _revisaoSeq = 0;
+const _revisao = {};
+function montarRevisaoExtras(data, label, qtd){
+  const eid = 'rev' + (_revisaoSeq++);
+  _revisao[eid] = { data, label };
+  $('extrasList').insertAdjacentHTML('beforeend', `<div class="passeioBusca" id="${eid}">
+    <div class="fotoTitulo">✅ Encontramos ${qtd} passeio(s)/extra(s) no documento (acima). Se quiser, adicione fotos em cada um usando "🔍 Buscar fotos e opiniões no Google" ou "📷 Adicionar foto(s) manualmente". Quando terminar (ou se não quiser adicionar fotos), clique em continuar:</div>
+    <button type="button" class="btn p" onclick="continuarRevisaoExtras('${eid}')">CONTINUAR ORÇAMENTO →</button>
+  </div>`);
+  const el = $(eid);
+  if (el) el.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+async function continuarRevisaoExtras(eid){
+  const st = _revisao[eid];
+  if (!st) return;
+  const el = $(eid);
+  if (el) el.remove();
+  delete _revisao[eid];
+  const manual = extrasManuais();
+  if (manual.length) st.data.extras = manual;
+  if (st.data.valores && typeof st.data.valores.totalNum === 'number') { montarPreco(st.data, st.label); return; }
+  await continuarAposPreco(st.data, st.label);
+}
 async function gerar(arquivos, label){
   try{
     const r = await fetch('/api/extract', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ arquivos }) });
@@ -395,11 +418,21 @@ async function gerar(arquivos, label){
     const cn = ($('cliNome').value || '').trim();
     const ct = ($('cliTel').value || '').trim();
     if (cn || ct) { j.data.cliente = j.data.cliente || {}; if (cn) j.data.cliente.nome = cn; if (ct) j.data.cliente.telefone = ct; }
-    // extras digitados manualmente na tela entram junto com os que a IA já encontrou no documento
-    const manual = extrasManuais();
-    if (manual.length) { j.data.extras = [...(Array.isArray(j.data.extras) ? j.data.extras : []), ...manual]; }
     const aviso = avisoRoteiroSelecionado();
     if (aviso) j.data.avisoRoteiro = aviso;
+
+    // se a IA já encontrou passeios/extras dentro do documento, mostra eles na tela (com opção
+    // de buscar fotos e opiniões no Google ou subir foto manual) antes de continuar — em vez de
+    // simplesmente incluí-los sem chance de adicionar fotos, como acontecia antes.
+    const aiExtras = Array.isArray(j.data.extras) ? j.data.extras : [];
+    delete j.data.extras;
+    aiExtras.forEach(e => addExtraRow(e.titulo || '', e.descricao || '', e.fotos || [], e.opinioes || []));
+    if (aiExtras.length) { montarRevisaoExtras(j.data, label, aiExtras.length); return; }
+
+    // sem passeios detectados pela IA: só os extras manuais que já estavam na tela entram
+    const manual = extrasManuais();
+    if (manual.length) j.data.extras = manual;
+
     // antes de seguir, confirme (ou ajuste) o valor final da proposta
     if (j.data.valores && typeof j.data.valores.totalNum === 'number') {
       montarPreco(j.data, label);
@@ -422,6 +455,19 @@ async function continuarAposPreco(data, label){
 }
 function brlExtrair(n){ return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function pad2Extrair(n){ return String(n).padStart(2, '0'); }
+function extrairQtdPessoas(data){
+  const fontes = [];
+  if (Array.isArray(data.resumo)) { const r = data.resumo.find(s => /viajante/i.test(s.k || '')); if (r) fontes.push(r.v); }
+  if (Array.isArray(data.voos) && data.voos[0]) fontes.push(data.voos[0].viajantes);
+  if (data.seguro) fontes.push(data.seguro.viajantes);
+  if (Array.isArray(data.hoteis) && data.hoteis[0] && Array.isArray(data.hoteis[0].quartos) && data.hoteis[0].quartos[0]) fontes.push(data.hoteis[0].quartos[0].ocupacao);
+  for (const txt of fontes) {
+    if (!txt) continue;
+    const nums = String(txt).match(/\d+/g);
+    if (nums) { const soma = nums.reduce((a, b) => a + parseInt(b, 10), 0); if (soma > 0) return soma; }
+  }
+  return '';
+}
 let _preco = 0;
 function montarPreco(data, label){
   const eid = 'prc' + (_preco++);
@@ -431,6 +477,7 @@ function montarPreco(data, label){
   const valorParcela = v.valorParcelaNum || 0;
   const taxaUnica = v.taxaUnicaNum || 0;
   const temParcelas = parcelas > 0 && valorParcela > 0;
+  const qtdPessoasDefault = v.pessoas || extrairQtdPessoas(data);
   const resumoOriginal = temParcelas
     ? (taxaUnica
         ? `1ª parcela ${brlExtrair(valorParcela + taxaUnica)} + ${pad2Extrair(parcelas - 1)}x de ${brlExtrair(valorParcela)}`
@@ -441,6 +488,9 @@ function montarPreco(data, label){
     <div class="precoBox">
       <div class="precoLinha"><span>Valor identificado na extração</span><b>${brlExtrair(total)}</b></div>
       ${resumoOriginal ? `<div class="precoLinha"><span>Parcelamento identificado</span><b>${resumoOriginal}</b></div>` : ''}
+      <label class="precoLabel">Número de pessoas neste orçamento (pra mostrar o valor por pessoa no orçamento)
+        <input type="number" min="1" step="1" id="${eid}_pessoas" value="${qtdPessoasDefault}">
+      </label>
       <label class="precoLabel">Valor adicional a somar (R$) — divide automaticamente entre as parcelas
         <input type="number" step="0.01" id="${eid}_extra" value="0" oninput="atualizarPrecoExtra('${eid}')">
       </label>
@@ -500,6 +550,9 @@ async function confirmarPreco(eid){
   const el = $(eid);
   const data = el._data, label = el._label, o = el._orig;
   const manualAberto = $(eid + '_manual').style.display !== 'none';
+  const pessoas = parseInt($(eid + '_pessoas').value, 10);
+  data.valores = data.valores || {};
+  if (isFinite(pessoas) && pessoas > 0) data.valores.pessoas = pessoas;
   if (data.valores) {
     const v = data.valores;
     if (manualAberto) {
