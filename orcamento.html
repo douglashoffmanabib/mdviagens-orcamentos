@@ -80,7 +80,7 @@
   .vhotel-nome .stars{color:var(--gold);font-size:14px}
   .vpay{background:linear-gradient(135deg,#0e1c42,#16295c);color:#fff;border-radius:12px;padding:18px 20px}
   .vpay-eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;opacity:.7;margin-bottom:2px}
-  .vpay-destaque{font-size:24px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:5px}
+  .vpay-destaque{font-size:20px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:5px}
   .vpay-nota{font-size:10.5px;font-style:italic;opacity:.7;margin-bottom:8px}
   .vpay-l{font-size:13.5px;font-weight:700;margin-bottom:4px}
   .vpay-l span{font-size:11.5px;font-weight:500;opacity:.85}
@@ -197,7 +197,7 @@
   /* Forma de Investimento — bloco azul */
   .invest-blue{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:24px;border-radius:14px}
   .inv-eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.7;margin-bottom:3px}
-  .inv-destaque{font-family:'Poppins',sans-serif;font-size:30px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:6px}
+  .inv-destaque{font-family:'Poppins',sans-serif;font-size:24px;font-weight:900;color:var(--gold);line-height:1.2;margin-bottom:6px}
   .inv-nota{font-size:11.5px;font-style:italic;opacity:.7;margin-bottom:12px}
   .inv-resumo-tit{font-size:12px;font-weight:700;opacity:.75;margin:2px 0 4px}
   .inv-resumo-linha{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:4px}
@@ -447,7 +447,8 @@ function buildInvest(v, temExperiencias, waRetirar){
   const taxaUnica=v.taxaUnicaNum||0;
   const total=v.totalNum||0;
   const primeira=valorParcela+taxaUnica;
-  const pessoas=(v.pessoas && v.pessoas>1)?v.pessoas:0;
+  const pessoas=(v.pessoas && v.pessoas>=1)?v.pessoas:1;
+  const pessoasTxt=pessoas===1?'1 pessoa':pessoas+' pessoas';
 
   // "Primeira parcela X + 09 parcelas de Y" numa linha só (ou "10 parcelas de Y" quando não há taxa)
   function resumoParcelas(vParcela, vTaxa, vPrimeira){
@@ -462,35 +463,24 @@ function buildInvest(v, temExperiencias, waRetirar){
   const inclusoes=buildInclusoes();
   const inclusoesHtml=inclusoes.length?`<div class="inv-inclui"><b>Seu pacote inclui:</b> ${inclusoes.join(' · ')}.</div>`:'';
 
-  let corpo;
-  if(pessoas){
-    const totalPP=total/pessoas, parcelaPP=valorParcela/pessoas, taxaPP=taxaUnica/pessoas, primeiraPP=parcelaPP+taxaPP;
-    const resumoPP=resumoParcelas(parcelaPP, taxaPP, primeiraPP);
-    const resumoTotalTxt=resumoParcelas(valorParcela, taxaUnica, primeira);
-    corpo=`
+  // sempre em duas partes: valor por pessoa (destaque) + valor total do pacote (logo abaixo, com sua própria parcela)
+  const totalPP=total/pessoas, parcelaPP=valorParcela/pessoas, taxaPP=taxaUnica/pessoas, primeiraPP=parcelaPP+taxaPP;
+  const resumoPP=resumoParcelas(parcelaPP, taxaPP, primeiraPP);
+  const resumoTotalTxt=resumoParcelas(valorParcela, taxaUnica, primeira);
+  const corpo=`
     <div class="inv-eyebrow">Valor por pessoa</div>
     <div class="inv-destaque">${parcelas&&parcelaPP?`${pad(parcelas)}X ${brl(parcelaPP)} SEM JUROS`:brl(totalPP)}</div>
     ${notaPessoa(taxaPP)}
     ${resumoPP?`<div class="inv-resumo-tit">Resumo:</div><div class="inv-resumo-linha">${resumoPP}</div>`:''}
     <div class="inv-resumo-linha inv-resumo-total">Valor total por pessoa ${brl(totalPP)}</div>
     <div class="inv-divider"></div>
-    <div class="inv-eyebrow">Valor total do pacote · ${pessoas} pessoas</div>
+    <div class="inv-eyebrow">Valor total do pacote para ${pessoasTxt}</div>
     <div class="inv-total-linha">${brl(total)}${parcelas?` dividido em ${parcelas}X SEM JUROS`:''}${v.taxasInclusas?' · taxas inclusas':''}</div>
     ${resumoTotalTxt?`<div class="inv-resumo-linha">${resumoTotalTxt}</div>`:''}
     ${notaTotal(taxaUnica)}
-    <div class="inv-validade">Os valores acima são apresentados por pessoa e também o total do pacote. Esta proposta é válida somente para o fechamento do pacote completo, para as ${pessoas} pessoas cotadas — não é possível fechar parcialmente por este valor.</div>
+    ${pessoas>1?`<div class="inv-validade">Os valores acima são apresentados por pessoa e também o total do pacote. Esta proposta é válida somente para o fechamento do pacote completo, para as ${pessoasTxt} cotadas — não é possível fechar parcialmente por este valor.</div>`:''}
     ${inclusoesHtml}
     <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>`;
-  }else{
-    const resumoTxt=resumoParcelas(valorParcela, taxaUnica, primeira);
-    corpo=`
-    ${parcelas&&valorParcela?`<div class="inv-destaque">${pad(parcelas)}X ${brl(valorParcela)} SEM JUROS</div>`:''}
-    ${notaTotal(taxaUnica)}
-    ${resumoTxt?`<div class="inv-resumo-tit">Resumo:</div><div class="inv-resumo-linha">${resumoTxt}</div>`:''}
-    <div class="inv-resumo-linha inv-resumo-total">Valor total ${brl(total)}${v.taxasInclusas?' · taxas inclusas':''}</div>
-    ${inclusoesHtml}
-    <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>`;
-  }
 
   const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
   return `<div class="card invest-blue">${corpo}</div>
@@ -1042,28 +1032,23 @@ function renderHotel(){
   const extras = (Array.isArray(D.extras)&&D.extras.length)
     ? `<h3 class="vsec">Experiências Inclusas</h3>${D.extras.map(e=>`<div class="card trf"><span class="ic2">${ICONS.extras}</span><div><h4>${e.titulo||''}</h4><p>${e.descricao||''}</p>${buildExtraFotos(e.fotos)}</div></div>`).join('')}`
     : '';
-  const pessoasH=(v.pessoas && v.pessoas>1)?v.pessoas:0;
+  const pessoasH=(v.pessoas && v.pessoas>=1)?v.pessoas:1;
+  const pessoasHTxt=pessoasH===1?'1 pessoa':pessoasH+' pessoas';
   function resumoVpay(vParcela, vTaxa, vPrimeira){
     if(!(v.parcelas&&vParcela)) return '';
     return vTaxa
       ? `Primeira parcela ${brl(vPrimeira)} + ${pad(v.parcelas-1)} parcelas de ${brl(vParcela)}`
       : `${pad(v.parcelas)} parcelas de ${brl(vParcela)}`;
   }
-  let pag='', vpayExtra='';
-  if(pessoasH){
-    const totalPP=(v.totalNum||0)/pessoasH, parcelaPP=(v.valorParcelaNum||0)/pessoasH, taxaPP=(v.taxaUnicaNum||0)/pessoasH, primeiraPP=parcelaPP+taxaPP;
-    const resumoPP=resumoVpay(parcelaPP, taxaPP, primeiraPP);
-    pag = `<div class="vpay-eyebrow">Valor por pessoa</div>
+  const totalPP=(v.totalNum||0)/pessoasH, parcelaPP=(v.valorParcelaNum||0)/pessoasH, taxaPP=(v.taxaUnicaNum||0)/pessoasH, primeiraPP=parcelaPP+taxaPP;
+  const resumoPP=resumoVpay(parcelaPP, taxaPP, primeiraPP);
+  const pag = `<div class="vpay-eyebrow">Valor por pessoa</div>
       <div class="vpay-destaque">${v.parcelas&&parcelaPP?`${pad(v.parcelas)}X ${brl(parcelaPP)} SEM JUROS`:brl(totalPP)}</div>
       ${taxaPP?`<div class="vpay-nota">*Na primeira parcela será acrescida a taxa de embarque.</div>`:''}
       ${resumoPP?`<div class="vpay-l">${resumoPP}</div>`:''}
       <div class="vpay-l"><b>Valor total por pessoa ${brl(totalPP)}</b></div>
       <div class="vpay-divider"></div>`;
-    vpayExtra = `<div class="vpay-validade">Os valores acima são apresentados por pessoa e também o total do pacote. Esta proposta é válida somente para o fechamento do pacote completo, para as ${pessoasH} pessoas cotadas.</div>`;
-  }else if(v.parcelas&&v.valorParcelaNum){
-    pag = `<div class="vpay-destaque">${pad(v.parcelas)}X ${brl(v.valorParcelaNum)} SEM JUROS</div>
-      ${v.taxaUnicaNum?`<div class="vpay-nota">*Na primeira parcela é cobrada a taxa de embarque.</div>`:''}`;
-  }
+  const vpayExtra = pessoasH>1?`<div class="vpay-validade">Os valores acima são apresentados por pessoa e também o total do pacote. Esta proposta é válida somente para o fechamento do pacote completo, para as ${pessoasHTxt} cotadas.</div>`:'';
   const waMod=(op)=>`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero ${op}.`)}`;
   document.getElementById('app').innerHTML=`
   <div class="vpage">
@@ -1083,11 +1068,10 @@ function renderHotel(){
       ${mapas}
       ${extras}
       <h3 class="vsec">Forma de Investimento</h3>
-      <div class="vpay">${pag}${pessoasH?`<div class="vpay-eyebrow">Valor total do pacote · ${pessoasH} pessoas</div>
+      <div class="vpay">${pag}<div class="vpay-eyebrow">Valor total do pacote para ${pessoasHTxt}</div>
         <div class="vpay-l" style="font-size:15px"><b>${brl(v.totalNum)}${v.parcelas?` dividido em ${v.parcelas}X SEM JUROS`:''}${v.taxasInclusas?' · taxas inclusas':''}</b></div>
         ${resumoVpay(v.valorParcelaNum, v.taxaUnicaNum, (v.valorParcelaNum||0)+(v.taxaUnicaNum||0))?`<div class="vpay-l">${resumoVpay(v.valorParcelaNum, v.taxaUnicaNum, (v.valorParcelaNum||0)+(v.taxaUnicaNum||0))}</div>`:''}
-        ${v.taxaUnicaNum?`<div class="vpay-nota">*Na primeira parcela é cobrada a taxa de embarque.</div>`:''}`
-        :`<div class="vpay-t">Valor total${v.taxasInclusas?' · taxas inclusas':''}: <b>${brl(v.totalNum)}</b></div>`}${vpayExtra}</div>
+        ${v.taxaUnicaNum?`<div class="vpay-nota">*Na primeira parcela é cobrada a taxa de embarque.</div>`:''}${vpayExtra}</div>
       <div class="mod-box">
         <div class="mod-t">Quer modificar? Escolha:</div>
         <div class="mod-btns">
