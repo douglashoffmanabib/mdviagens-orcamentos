@@ -546,13 +546,19 @@ function buildExperienciaCard(e){
 const PLANE_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>';
 function buildFlights(list){
   return list.map(f=>{
+    let tipoAnterior=null;
     const legs=f.trechos.map(t=>{
       const airlineHtml = t.iata==='MULTI'
         ? `<span class="airline-multi">${PLANE_ICON}</span>`
         : (t.iata?`<img class="airlogo" src="https://pics.avs.io/120/40/${t.iata}.png" alt="${t.cia}" onerror="this.style.display='none'">`:'');
+      // se este trecho é a continuação (2º, 3º... segmento) de uma conexão da mesma viagem,
+      // mostra "CONEXÃO" em vez de repetir IDA/VOLTA — evita parecer uma viagem nova
+      const isContinuacao = t.tipo===tipoAnterior;
+      tipoAnterior=t.tipo;
+      const tagTipo = isContinuacao ? '🔁 CONEXÃO' : (t.tipo==='ida'?'🛫 IDA':'🛬 VOLTA');
       return `
       <div class="flight-head ${t.tipo}">
-        <span class="fh-tipo">${t.tipo==='ida'?'🛫 IDA':'🛬 VOLTA'}</span>
+        <span class="fh-tipo">${tagTipo}</span>
         <span class="fh-data">${t.data}</span>
         <div class="airports"><span>${t.deCidade} · ${t.de}</span><span>→</span><span>${t.paraCidade} · ${t.para}</span></div>
       </div>
@@ -1206,11 +1212,19 @@ async function loadHotelInfo(){
   const base=(CONFIG.API_BASE||location.origin).replace(/\/$/,''); // usa sempre o próprio backend
   await Promise.all(D.hoteis.map(async h=>{
     if(!h.nome) return;
+    // se o hotel já veio com fotos escolhidas na extração (agente confirmou qual hotel é, quando
+    // havia mais de um com o mesmo nome), não busca de novo aqui — evita trocar pelo hotel errado.
+    if(h.fotos && h.fotos.length) return;
     try{
       const q=encodeURIComponent(`${h.nome} ${h.endereco||''}`);
       const r=await fetch(base+'/api/hotel-photos?q='+q);
       if(!r.ok){ let corpo=''; try{corpo=await r.text();}catch(e2){} console.warn('hotel-photos falhou:',r.status,corpo); return; }
-      const d=await r.json();
+      const busca=await r.json();
+      const candidato=(busca.candidatos||[])[0];
+      if(!candidato||!candidato.id) return;
+      const r2=await fetch(base+'/api/hotel-photos?placeId='+encodeURIComponent(candidato.id));
+      if(!r2.ok) return;
+      const d=await r2.json();
       if(d.photoRefs&&d.photoRefs.length){
         h.fotos=d.photoRefs.map(ref=>base+'/api/place-photo?ref='+encodeURIComponent(ref));
         h.fotosFonte="Fotos, avaliações e localização reais do hotel";

@@ -76,6 +76,18 @@
   .fotoAvisoOficial{ font-size:11.5px; color:var(--muted); margin-top:6px; }
   .fotoCred{ position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.55); color:#ddd; font-size:10px; padding:2px 6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .fotoAcoes{ width:100%; display:flex; gap:10px; align-items:center; }
+  .hotelGrupo{ width:100%; margin:10px 0 4px; }
+  .hotelGrupoTit{ font-weight:700; margin-bottom:8px; }
+  .hotelCandGrid{ width:100%; display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:10px; margin-bottom:6px; }
+  .hotelCand{ position:relative; border:3px solid transparent; border-radius:10px; overflow:hidden; cursor:pointer; background:#0a1836; }
+  .hotelCand img{ width:100%; aspect-ratio:16/10; object-fit:cover; display:block; background:#081128; }
+  .hotelCand:hover{ border-color:var(--gold); }
+  .hotelCand.sel{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(224,165,46,.4); }
+  .hotelCandInfo{ padding:8px 10px; }
+  .hotelCandInfo b{ display:block; font-size:12.5px; color:var(--ink); line-height:1.3; }
+  .hotelCandInfo span{ display:block; font-size:11px; color:var(--muted); margin-top:3px; }
+  .hotelCand.skip{ display:flex; align-items:center; justify-content:center; min-height:70px; aspect-ratio:16/10; }
+  .hotelCand.skip span{ color:var(--muted); font-size:12.5px; text-align:center; padding:0 10px; }
   .precoBox{ width:100%; background:#0a1836; border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:6px 0 14px; }
   .precoLinha{ display:flex; justify-content:space-between; font-size:14px; color:var(--ink); padding:4px 0; }
   .precoLinha.precoTotal{ border-top:1px solid var(--line); margin-top:8px; padding-top:10px; font-size:16px; }
@@ -649,6 +661,99 @@ async function continuarAposPreco(data, label){
   await continuarAposVoos(data, label);
 }
 async function continuarAposVoos(data, label){
+  await continuarAposHoteis(data, label);
+}
+// ---------- Identificação do hotel certo (Google Places) — evita puxar fotos de um hotel ----------
+// homônimo em outra cidade: busca até 5 candidatos por nome; se só achar 1, usa direto; se achar
+// mais de um, para e pergunta à agente qual é o hotel certo (nome + cidade/endereço de cada um).
+async function prepararHoteis(data){
+  const pendentes = [];
+  const hoteis = Array.isArray(data.hoteis) ? data.hoteis : [];
+  for (let hi = 0; hi < hoteis.length; hi++) {
+    const h = hoteis[hi];
+    if (!h || !h.nome || (h.fotos && h.fotos.length)) continue; // sem nome, ou já resolvido antes
+    try {
+      const q = encodeURIComponent(`${h.nome} ${h.endereco || ''}`.trim());
+      const r = await fetch('/api/hotel-photos?q=' + q);
+      if (!r.ok) { h._hotelSemMatch = true; continue; }
+      const j = await r.json();
+      const candidatos = j.candidatos || [];
+      if (!candidatos.length) { h._hotelSemMatch = true; continue; }
+      if (candidatos.length === 1) {
+        await aplicarHotelEscolhido(h, candidatos[0].id);
+      } else {
+        pendentes.push({ hi, nome: h.nome, candidatos });
+      }
+    } catch (e) { h._hotelSemMatch = true; }
+  }
+  return pendentes;
+}
+async function aplicarHotelEscolhido(h, placeId){
+  try {
+    const r = await fetch('/api/hotel-photos?placeId=' + encodeURIComponent(placeId));
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.photoRefs && d.photoRefs.length) {
+      h.fotos = d.photoRefs.map(ref => '/api/place-photo?ref=' + encodeURIComponent(ref));
+      h.fotosFonte = 'Fotos, avaliações e localização reais do hotel';
+    }
+    if (d.coordinates && d.coordinates.lat) h.geo = { lat: +d.coordinates.lat, lon: +d.coordinates.lon };
+    if (d.endereco && !h.endereco) h.endereco = d.endereco;
+    h.tripadvisor = h.tripadvisor || {};
+    if (d.rating) h.tripadvisor.nota = d.rating;
+    if (d.reviewsCount) h.tripadvisor.avaliacoes = d.reviewsCount;
+    if (d.reviews && d.reviews.length) h.tripadvisor.resenhas = d.reviews;
+  } catch (e) { /* segue sem fotos deste hotel */ }
+}
+let _hotelSeq = 0;
+function montarEscolhaHotel(data, label, pendentes){
+  const eid = 'htl' + (_hotelSeq++);
+  const grupos = pendentes.map((p, gi) => {
+    const cards = p.candidatos.map((c, ci) => `<div class="hotelCand" id="${eid}_g${gi}_c${ci}" onclick="escolherHotelCand('${eid}',${gi},${ci})">
+      <img src="${c.thumbRef ? '/api/place-photo?ref=' + encodeURIComponent(c.thumbRef) : ''}" loading="lazy" onerror="this.style.opacity=0.15">
+      <div class="hotelCandInfo"><b>${escapeHtml(c.name)}</b><span>${escapeHtml(c.endereco || '')}</span>${c.rating ? `<span>⭐ ${c.rating} (${c.reviewsCount || 0} avaliações)</span>` : ''}</div>
+    </div>`).join('');
+    const skipCard = `<div class="hotelCand skip" id="${eid}_g${gi}_c-1" onclick="escolherHotelCand('${eid}',${gi},-1)"><span>Nenhum destes / pular fotos deste hotel</span></div>`;
+    return `<div class="hotelGrupo">
+      <div class="hotelGrupoTit">Encontramos mais de um hotel chamado "${escapeHtml(p.nome)}" — qual é o certo?</div>
+      <div class="hotelCandGrid">${cards}${skipCard}</div>
+    </div>`;
+  }).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    ${grupos}
+    <div class="fotoAcoes"><button class="btn p" onclick="confirmarHoteis('${eid}')">USAR SELEÇÃO E CONTINUAR →</button></div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._pendentes = pendentes; el._sel = {};
+  pendentes.forEach((p, gi) => { el._sel[gi] = 0; const c0 = $(`${eid}_g${gi}_c0`); if (c0) c0.classList.add('sel'); });
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function escolherHotelCand(eid, gi, ci){
+  const el = $(eid);
+  el._sel[gi] = ci;
+  const p = el._pendentes[gi];
+  for (let k = -1; k < p.candidatos.length; k++) { const card = $(`${eid}_g${gi}_c${k}`); if (card) card.classList.toggle('sel', k === ci); }
+}
+async function confirmarHoteis(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label, pendentes = el._pendentes, sel = el._sel;
+  el.remove();
+  for (let gi = 0; gi < pendentes.length; gi++) {
+    const p = pendentes[gi];
+    const ci = sel[gi];
+    if (ci === -1 || ci == null) continue;
+    const cand = p.candidatos[ci];
+    const h = data.hoteis[p.hi];
+    if (h && cand) await aplicarHotelEscolhido(h, cand.id);
+  }
+  await continuarAposHoteisResolvidos(data, label);
+}
+async function continuarAposHoteis(data, label){
+  const pendentesHoteis = await prepararHoteis(data);
+  if (pendentesHoteis.length) { montarEscolhaHotel(data, label, pendentesHoteis); return; }
+  await continuarAposHoteisResolvidos(data, label);
+}
+async function continuarAposHoteisResolvidos(data, label){
   // oferece as fotos do destino para escolher a capa — mesmo em cotações só de voo (sem hotel),
   // que também merecem uma foto do destino no orçamento
   if (data.destinoBusca || data.destinoResumo) {
