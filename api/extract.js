@@ -280,6 +280,7 @@ function enrich(d) {
     });
     return pts;
   };
+  const primeiroVolta = voltaSegs[0] || null;
   const ultimoVolta = voltaSegs[voltaSegs.length - 1];
   const mapaVoo = {
     ida: idaSegs.length ? { rota, pontos: buildRouteGrupo(idaSegs) } : null,
@@ -291,8 +292,8 @@ function enrich(d) {
   const diasTotal = noitesTotal ? noitesTotal + 1 : 0;
   const duracaoTxt = noitesTotal ? `${diasTotal} dias e ${String(noitesTotal).padStart(2, '0')} noites` : '';
   const chips = [];
-  if (ida && volta) chips.push(`${ida.data} a ${volta.data}`);
-  else if (ida && ida.data) chips.push(ida.data);
+  if (primeiroIda && primeiroVolta) chips.push(`${primeiroIda.data} a ${primeiroVolta.data}`);
+  else if (primeiroIda && primeiroIda.data) chips.push(primeiroIda.data);
   if (duracaoTxt) chips.push(duracaoTxt);
   if (hoteis.length > 1) chips.push(`${hoteis.length} hotéis`);
   if (viajantes) chips.push(viajantes);
@@ -300,7 +301,7 @@ function enrich(d) {
 
   const primeiro = hoteis[0] || {};
   const ultimo = hoteis[hoteis.length - 1] || {};
-  const periodo = (ida && volta) ? `${ida.data} a ${volta.data}`
+  const periodo = (primeiroIda && primeiroVolta) ? `${primeiroIda.data} a ${primeiroVolta.data}`
     : (primeiro.checkin && ultimo.checkout ? `${primeiro.checkin} a ${ultimo.checkout}` : '');
 
   const hoje = new Date().toLocaleDateString('pt-BR');
