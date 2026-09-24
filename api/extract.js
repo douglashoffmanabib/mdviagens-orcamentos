@@ -131,6 +131,7 @@ Regras:
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
 - Se houver mais de um trecho aéreo (ida e volta), inclua ambos como itens de "trechos".
+- Voos com CONEXÃO/ESCALA: quando a ida (ou a volta) tiver mais de um segmento de voo (ex.: Confins→Guarulhos e depois Guarulhos→Natal), crie um item em "trechos" para CADA segmento físico, em ordem cronológica, e marque TODOS os segmentos daquela mesma viagem com o MESMO "tipo" ("ida" nos dois, ou "volta" nos dois) — nunca marque o segmento intermediário com um tipo diferente. Preencha "conexao" no segmento que tem escala DEPOIS dele, citando a cidade/aeroporto da conexão e o tempo de espera quando o documento mostrar (ex.: "Conexão em Guarulhos (GRU) · 2h30 de espera"); no último segmento de cada viagem, sem mais escalas, use "Voo direto" só se a viagem inteira não tiver nenhuma escala — se já houve escala antes, deixe esse último "conexao" vazio ou null.
 - "itens" (valores separados por produto): preencha esta lista SOMENTE quando o documento mostrar explicitamente os valores de CADA produto/serviço separadamente (ex.: "Aéreo: R$ 2.500,00", "Hospedagem: R$ 8.000,00", "Passeio Genipabu: R$ 350,00", "Seguro: R$ 180,00"). Cada item de "itens" deve corresponder, na ordem, a exatamente um dos voos/hotéis/passeios já listados acima nas seções "voos", "hoteis" e "extras" (um item "hotel" por hotel, na mesma ordem de "hoteis"; um item "passeio" por extra, na mesma ordem de "extras"). Se o documento só trouxer um valor TOTAL ÚNICO combinado, sem nenhum detalhamento por produto, deixe "itens" como uma lista vazia [].
 - Seja objetivo: nada de repetir informação nem escrever textos longos. Responda somente o JSON.`;
 
@@ -230,32 +231,59 @@ function enrich(d) {
     return { ...h, quartos, geo: h.geo || null, fotos: [], fotosFonte: '' };
   });
 
-  // ---- voos: junta todos os trechos e ordena por data (o 1º é ida, o último é volta) ----
+  // ---- voos: junta todos os trechos e ordena por data ----
+  // Um trecho aéreo pode ter conexão (mais de um segmento físico pertencendo à MESMA viagem, ex.:
+  // Confins→Guarulhos e Guarulhos→Natal são os dois "pedaços" de UMA ida com escala). O campo "tipo"
+  // ("ida"/"volta") vem da própria IA por segmento — respeitamos isso em vez de inferir só pela posição
+  // no array (que quebrava assim que havia mais de 2 segmentos: o pedaço do meio virava "volta" errado).
   const voosBrutos = Array.isArray(d.voos) ? d.voos : [];
   let trechos = [];
   voosBrutos.forEach(v => { (Array.isArray(v.trechos) ? v.trechos : []).forEach(t => trechos.push(t)); });
   trechos = trechos.filter(t => t && (t.de || t.para));
   trechos.sort((a, b) => parseDMY(a.data) - parseDMY(b.data));
   if (trechos.length) {
-    trechos.forEach((t, i) => { t.tipo = (i === 0) ? 'ida' : (i === trechos.length - 1 ? 'volta' : (t.tipo || 'trecho')); });
+    const semTipo = trechos.every(t => t.tipo !== 'ida' && t.tipo !== 'volta');
+    if (semTipo) {
+      // rede de segurança: nenhum trecho veio com tipo definido — assume ida+volta direto, sem escala
+      trechos.forEach((t, i) => { t.tipo = (i === trechos.length - 1 && trechos.length > 1) ? 'volta' : 'ida'; });
+    } else {
+      // preserva o tipo indicado pela IA; um segmento sem tipo (raro) herda o do segmento anterior
+      // — é o comportamento certo pro "pedaço 2" de uma conexão, que segue a mesma direção do 1º
+      let ultimoTipo = 'ida';
+      trechos.forEach(t => {
+        if (t.tipo === 'ida' || t.tipo === 'volta') ultimoTipo = t.tipo;
+        else t.tipo = ultimoTipo;
+      });
+    }
   }
+  const idaSegs = trechos.filter(t => t.tipo === 'ida');
+  const voltaSegs = trechos.filter(t => t.tipo === 'volta');
+  const primeiroIda = idaSegs[0] || trechos[0] || null;
+  const ultimoIda = idaSegs.length ? idaSegs[idaSegs.length - 1] : primeiroIda;
   const viajantes = (voosBrutos.find(v => v.viajantes) || {}).viajantes || '';
-  const rota = trechos.length
-    ? `${trechos[0].deCidade || trechos[0].de} → ${trechos[0].paraCidade || trechos[0].para}`
+  // rota do topo: ORIGEM do 1º trecho da ida -> DESTINO FINAL do último trecho da ida (nunca a escala)
+  const rota = primeiroIda
+    ? `${primeiroIda.deCidade || primeiroIda.de} → ${(ultimoIda && (ultimoIda.paraCidade || ultimoIda.para)) || ''}`
     : ((voosBrutos[0] && voosBrutos[0].rota) || '');
   const voos = trechos.length ? [{ rota, viajantes, trechos }] : [];
 
-  // ---- mapa de voo (ida à esquerda, volta à direita) ----
-  const ida = trechos[0] || null;
-  const volta = trechos.length > 1 ? trechos[trechos.length - 1] : null;
+  // ---- mapa de voo (ida à esquerda, volta à direita), passando pelas escalas quando houver ----
   const ponto = (iata, cidade) => {
     const c = iataCoords(iata);
     return c ? { nome: `${cidade || iata} (${iata})`, lat: c[0], lon: c[1] } : null;
   };
-  const buildRoute = (t) => t ? [ponto(t.de, t.deCidade), ponto(t.para, t.paraCidade)].filter(Boolean) : [];
+  const buildRouteGrupo = (segs) => {
+    const pts = [];
+    segs.forEach((t, i) => {
+      if (i === 0) { const p = ponto(t.de, t.deCidade); if (p) pts.push(p); }
+      const p2 = ponto(t.para, t.paraCidade); if (p2) pts.push(p2);
+    });
+    return pts;
+  };
+  const ultimoVolta = voltaSegs[voltaSegs.length - 1];
   const mapaVoo = {
-    ida: ida ? { rota: `${ida.deCidade || ida.de} → ${ida.paraCidade || ida.para}`, pontos: buildRoute(ida) } : null,
-    volta: volta ? { rota: `${volta.deCidade || volta.de} → ${volta.paraCidade || volta.para}`, pontos: buildRoute(volta) } : null
+    ida: idaSegs.length ? { rota, pontos: buildRouteGrupo(idaSegs) } : null,
+    volta: voltaSegs.length ? { rota: `${voltaSegs[0].deCidade || voltaSegs[0].de} → ${(ultimoVolta && (ultimoVolta.paraCidade || ultimoVolta.para)) || ''}`, pontos: buildRouteGrupo(voltaSegs) } : null
   };
 
   // ---- chips do topo (sem emojis) ----
