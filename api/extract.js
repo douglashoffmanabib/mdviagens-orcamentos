@@ -290,7 +290,23 @@ function enrich(d) {
   // ---- chips do topo (sem emojis) ----
   const noitesTotal = hoteis.reduce((s, h) => s + (Number(h.noites) || 0), 0);
   const diasTotal = noitesTotal ? noitesTotal + 1 : 0;
-  const duracaoTxt = noitesTotal ? `${diasTotal} dias e ${String(noitesTotal).padStart(2, '0')} noites` : '';
+  // duração TOTAL da viagem, contada pela data do voo de ida até a data do voo de volta — não só
+  // pelas noites de hotel. Em voos internacionais é comum a data de saída de casa e a data de
+  // chegada/volta não baterem com o número de noites de hotel (ex.: sai dia 16, volta dia 23 =
+  // 8 dias de viagem, mas só 6 noites de hotel = 7 dias "de hotel"). Quando bate, mostra só uma vez.
+  const dataIdaTs = primeiroIda ? parseDMY(primeiroIda.data) : 0;
+  const dataVoltaTs = (ultimoVolta || primeiroVolta) ? parseDMY((ultimoVolta || primeiroVolta).data) : 0;
+  const diasViagem = (dataIdaTs && dataVoltaTs && dataVoltaTs >= dataIdaTs)
+    ? Math.round((dataVoltaTs - dataIdaTs) / 86400000) + 1
+    : diasTotal;
+  let duracaoTxt = '';
+  if (noitesTotal && diasViagem > diasTotal) {
+    duracaoTxt = `${diasViagem} dias · ${String(diasTotal).padStart(2, '0')} dias e ${String(noitesTotal).padStart(2, '0')} noites de hotel`;
+  } else if (noitesTotal) {
+    duracaoTxt = `${diasTotal} dias e ${String(noitesTotal).padStart(2, '0')} noites`;
+  } else if (diasViagem && primeiroIda && (ultimoVolta || primeiroVolta)) {
+    duracaoTxt = `${diasViagem} dias`;
+  }
   const chips = [];
   if (primeiroIda && primeiroVolta) chips.push(`${primeiroIda.data} a ${primeiroVolta.data}`);
   else if (primeiroIda && primeiroIda.data) chips.push(primeiroIda.data);

@@ -31,6 +31,15 @@ const INK = rgb(0.15, 0.19, 0.25);
 const MUTED = rgb(0.42, 0.47, 0.54);
 const LINE = rgb(0.90, 0.92, 0.94);
 
+// Alguns campos vêm vazios da extração como null/undefined de verdade, mas às vezes a IA devolve
+// a STRING literal "null"/"undefined" em vez do valor ausente — nos dois casos não deve aparecer
+// nada no PDF, então normaliza tudo isso pra string vazia antes de desenhar.
+function safe(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v).trim();
+  return (/^(null|undefined)$/i.test(s)) ? '' : s;
+}
+
 async function fetchBytes(url, ms) {
   try {
     const ctl = new AbortController();
@@ -131,7 +140,25 @@ module.exports = async (req, res) => {
       if (!buf) return null;
       try { return await pdf.embedJpg(buf); } catch (e) { try { return await pdf.embedPng(buf); } catch (e2) { return null; } }
     };
-    const clean = (s) => String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{2600}-\u{26FF}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
+    // A fonte padrão (WinAnsi) só cobre um conjunto limitado de caracteres — setas (→ ↔ ←), muitos
+    // emojis e alguns símbolos NÃO são suportados e derrubavam a geração do PDF com "WinAnsi cannot
+    // encode ...". Trocamos as setas por um equivalente em texto e, pra qualquer outro caractere que
+    // a fonte não souber desenhar (presente ou futuro, vindo de texto extraído por IA), removemos
+    // silenciosamente em vez de deixar o pdf-lib estourar erro 500.
+    const ARROW_MAP = { '→': '->', '↔': '<->', '←': '<-', '↑': '^', '↓': 'v' };
+    const encodeCache = new Map();
+    const canEncode = (ch) => {
+      if (encodeCache.has(ch)) return encodeCache.get(ch);
+      let ok = true;
+      try { H.encodeText(ch); } catch (e) { ok = false; }
+      encodeCache.set(ch, ok);
+      return ok;
+    };
+    const clean = (s) => {
+      let out = String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{2600}-\u{26FF}\u{FE0F}\u{200D}]/gu, '');
+      out = [...out].map(ch => (ARROW_MAP[ch] !== undefined ? ARROW_MAP[ch] : (canEncode(ch) ? ch : ''))).join('');
+      return out.replace(/\s+/g, ' ').trim();
+    };
     const txt = (s, x, yy, size, font, color) => page.drawText(clean(s), { x, y: yy, size, font, color: color || INK });
     const wrap = (s, size, font, maxw) => {
       const words = clean(s).split(/\s+/); const lines = []; let cur = '';
@@ -225,7 +252,7 @@ module.exports = async (req, res) => {
         page.drawLine({ start: { x: ML, y: y - 14 }, end: { x: W - MR, y: y - 14 }, thickness: 0.6, color: LINE });
         y -= 24;
       });
-      const bag = trechos[0] && trechos[0].bagagem;
+      const bag = safe(trechos[0] && trechos[0].bagagem);
       if (bag) { txt(bag, ML, y, 8.5, H, MUTED); y -= 13; }
       y -= 6;
     }
@@ -263,8 +290,8 @@ module.exports = async (req, res) => {
         const per = [h.checkin && h.checkout ? `Período: ${h.checkin} a ${h.checkout}` : '', h.noites ? `${h.noites} noites` : ''].filter(Boolean).join('   •   ');
         if (per) { txt(per, ML, y, 9.5, H, INK); y -= 13; }
         (h.quartos || []).slice(0, 2).forEach(q => {
-          const l = [q.nome, q.ocupacao, q.plano, q.restricao].filter(Boolean).join('  ·  ');
-          txt(wrap(l, 9, H, CW)[0], ML, y, 9, H, INK); y -= 12;
+          const l = [safe(q.nome), safe(q.ocupacao), safe(q.plano), safe(q.restricao)].filter(Boolean).join('  ·  ');
+          if (l) { txt(wrap(l, 9, H, CW)[0], ML, y, 9, H, INK); y -= 12; }
         });
         const fotos = [];
         for (const b of (assets['hotelFotos' + hi] || [])) { const im = await embed(b); if (im) fotos.push(im); }
@@ -307,14 +334,27 @@ module.exports = async (req, res) => {
     const brl = n => 'R$ ' + Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
     const pad2 = n => String(n).padStart(2, '0');
     const boxLines = [];
-    if (v.parcelas && v.valorParcelaNum) {
+    const temDesconto = Number(v.descontoNum) > 0;
+    if (temDesconto) {
+      const totalOriginal = v.totalNum || 0;
+      const totalComDesconto = Math.max(0, totalOriginal - Number(v.descontoNum));
+      const parcelas = v.parcelas || 0;
+      const taxaUnica = v.taxaUnicaNum || 0;
+      const valorParcelaDesc = parcelas > 0 ? (totalComDesconto - taxaUnica) / parcelas : 0;
+      boxLines.push({ t: `Investimento total: ${brl(totalOriginal)}`, s: 10, f: H });
+      boxLines.push({ t: `Desconto especial aplicado: -${brl(v.descontoNum)}`, s: 11, f: B });
+      boxLines.push({ t: `Valor com desconto: ${brl(totalComDesconto)}`, s: 14, f: B });
+      if (parcelas > 0) boxLines.push({ t: `Em até ${pad2(parcelas)}X de ${brl(valorParcelaDesc)} no cartão de crédito ou boleto.`, s: 10, f: B });
+      const pessoas = Number(v.pessoas) || 0;
+      if (pessoas > 0 && parcelas > 0) boxLines.push({ t: `Valor por pessoa: ${pad2(parcelas)}X de ${brl(valorParcelaDesc / pessoas)}`, s: 9.5, f: H });
+    } else if (v.parcelas && v.valorParcelaNum) {
       boxLines.push({ t: `Pagamento em até ${v.parcelas}X sem juros no cartão.`, s: 13, f: B });
       if (v.taxaUnicaNum) {
         boxLines.push({ t: `01x ${brl(v.valorParcelaNum + v.taxaUnicaNum)} (${brl(v.taxaUnicaNum)} das taxas de embarque + ${brl(v.valorParcelaNum)} da primeira parcela)`, s: 10, f: B });
         boxLines.push({ t: `+ ${pad2(v.parcelas - 1)}X de ${brl(v.valorParcelaNum)}`, s: 10, f: B });
       } else boxLines.push({ t: `${pad2(v.parcelas)}X de ${brl(v.valorParcelaNum)}`, s: 10, f: B });
     }
-    boxLines.push({ t: `Valor total${v.taxasInclusas ? ' · taxas inclusas' : ''}: ${brl(v.totalNum)}`, s: 9.5, f: H });
+    if (!temDesconto) boxLines.push({ t: `Valor total${v.taxasInclusas ? ' · taxas inclusas' : ''}: ${brl(v.totalNum)}`, s: 9.5, f: H });
     boxLines.push({ t: 'Confira abaixo as condições desta proposta.', s: 8, f: H });
     const bh = 20 + boxLines.reduce((a, l) => a + l.s + 7, 0);
     secTitle('Forma de Investimento');
