@@ -216,6 +216,17 @@
   .inv-rodape{font-size:11.5px;opacity:.6;margin-top:8px;font-style:italic}
   .inv-validade{font-size:11.5px;opacity:.8;line-height:1.55;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)}
   .inv-urgencia{font-size:13px;font-weight:700;color:var(--gold);margin-top:12px;line-height:1.5}
+  /* Desconto especial — só aparece quando a agente digitar um valor de desconto */
+  .inv-desc-original{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#fff;opacity:.55;text-decoration:line-through;margin-bottom:8px}
+  .inv-desc-tag{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#ff8a1e,#ffc93c);color:#1b1b1b;font-weight:900;font-size:12px;letter-spacing:.02em;text-transform:uppercase;padding:7px 16px;border-radius:999px;margin-bottom:16px;box-shadow:0 3px 12px rgba(255,138,30,.4)}
+  .inv-desc-final{margin-bottom:14px}
+  .inv-desc-final .inv-eyebrow{opacity:.85}
+  .inv-desc-final .inv-destaque{font-size:28px;margin-bottom:0}
+  .inv-desc-pgto-tit,.inv-desc-pp-tit{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;opacity:.65;margin:12px 0 3px}
+  .inv-desc-pgto-val,.inv-desc-pp-val{font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;color:#fff;line-height:1.4}
+  .vpay .inv-desc-original,.vpay .inv-desc-pgto-val,.vpay .inv-desc-pp-val{color:var(--navy);opacity:1}
+  .vpay .inv-desc-original{opacity:.5}
+  .vpay .inv-desc-final .inv-destaque{color:var(--gold)}
   .mod-box{margin-top:20px;text-align:center}
   .mod-t{font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;color:var(--navy);margin-bottom:14px}
   .mod-btns{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
@@ -421,6 +432,14 @@ if(D.hero && !D.hero.imagem && !_ENXUTO) D.hero.imagem=(D.hoteis[0]&&D.hoteis[0]
 const stars=(n)=>"★".repeat(n)+"☆".repeat(5-n);
 const bubbles=(n)=>"●".repeat(Math.round(n))+"○".repeat(5-Math.round(n));
 const brl=n=>Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+// Alguns campos vêm vazios da extração como null/undefined de verdade, mas às vezes a IA devolve
+// a STRING literal "null" (ou "undefined") em vez do valor ausente de fato — nos dois casos não
+// deve aparecer nada na tela, então normaliza tudo isso pra string vazia.
+function safe(v){
+  if(v===null||v===undefined) return '';
+  const s=String(v).trim();
+  return (/^(null|undefined)$/i.test(s)) ? '' : s;
+}
 // Ícones das seções — linha fina, estilo Lucide/Feather (minimalista, sem emoji).
 function svgIc(inner, w){ return `<svg viewBox="0 0 24 24" width="${w||16}" height="${w||16}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`; }
 const ICONS = {
@@ -456,6 +475,38 @@ function buildInclusoes(){
   if(Array.isArray(D.extras) && D.extras.length) itens.push(D.extras.length>1 ? D.extras.length+' passeios/experiências' : '1 passeio/experiência');
   return itens;
 }
+// Bloco de "desconto especial" — só é usado quando a agente digitou um valor de desconto na
+// extração (v.descontoNum > 0). Mostra o valor cheio riscado, a tag de desconto, o valor final
+// já com desconto, a forma de pagamento recalculada sobre esse valor e o valor por pessoa
+// (parcela dividida pelo número de viajantes).
+function buildDescontoBloco(v){
+  const pad=n=>String(n).padStart(2,'0');
+  const desconto=Number(v.descontoNum)||0;
+  const totalOriginal=v.totalNum||0;
+  const totalComDesconto=Math.max(0,totalOriginal-desconto);
+  const parcelas=v.parcelas||0;
+  const taxaUnica=v.taxaUnicaNum||0;
+  const temParcelas=parcelas>0;
+  const valorParcelaDesc=temParcelas?(totalComDesconto-taxaUnica)/parcelas:0;
+  const pessoas=Number(v.pessoas)||0;
+  const valorPorPessoa=(pessoas>0 && temParcelas)?valorParcelaDesc/pessoas:0;
+  const formaPgto = temParcelas
+    ? `Em até ${pad(parcelas)}X de ${brl(valorParcelaDesc)} no cartão de crédito ou boleto.`
+    : `${brl(totalComDesconto)} à vista no cartão de crédito ou boleto.`;
+  return `
+    <div class="inv-eyebrow">Investimento total</div>
+    <div class="inv-desc-original">${brl(totalOriginal)}</div>
+    <div class="inv-desc-tag">🏷️ Desconto especial aplicado ${brl(desconto)}</div>
+    <div class="inv-desc-final">
+      <div class="inv-eyebrow">Valor com desconto</div>
+      <div class="inv-destaque">${brl(totalComDesconto)}</div>
+    </div>
+    <div class="inv-desc-pgto-tit">Forma de pagamento</div>
+    <div class="inv-desc-pgto-val">${formaPgto}</div>
+    ${(pessoas>0 && temParcelas) ? `<div class="inv-desc-pp-tit">Valor por pessoa</div>
+    <div class="inv-desc-pp-val">${pad(parcelas)}X de ${brl(valorPorPessoa)}</div>` : ''}
+    ${taxaUnica?'<div class="inv-nota">*As taxas de embarque foram incluídas no cálculo.</div>':''}`;
+}
 function buildInvest(v, temExperiencias, waRetirar){
   const pad=n=>String(n).padStart(2,'0');
   const parcelas=v.parcelas||0;
@@ -464,10 +515,15 @@ function buildInvest(v, temExperiencias, waRetirar){
   const total=v.totalNum||0;
   const primeira=valorParcela+taxaUnica;
   const temParcelas=parcelas>0 && valorParcela>0;
+  const temDesconto=Number(v.descontoNum)>0;
 
   const urgenciaHtml='<div class="inv-urgencia">Garanta logo este preço, os preços podem mudar a qualquer momento!</div>';
 
-  const corpo = temParcelas ? `
+  const corpo = temDesconto ? `
+    ${buildDescontoBloco(v)}
+    ${urgenciaHtml}
+    <div class="inv-rodape">Confira no rodapé as condições desta proposta.</div>`
+  : temParcelas ? `
     <div class="inv-eyebrow">Forma de pagamento</div>
     <div class="inv-destaque">ATÉ ${pad(parcelas)}X SEM JUROS NO CARTÃO</div>
     ${taxaUnica
@@ -569,7 +625,7 @@ function buildFlights(list){
         <div><b>${t.dur}</b><span class="lbl">Duração</span></div>
         <div><b>${t.chegada}</b><span class="lbl">Chegada · ${t.dataChegada||t.data}</span></div>
         <div><b>${t.classe}</b><span class="lbl">Classe</span></div>
-      </div><div class="divider"></div><div class="bag">🧳 ${t.bagagem}${t.aeronave?` &nbsp;·&nbsp; ✈️ ${t.aeronave}`:''}</div>`;
+      </div><div class="divider"></div>${(safe(t.bagagem)||safe(t.aeronave))?`<div class="bag">${safe(t.bagagem)?'🧳 '+safe(t.bagagem):''}${safe(t.aeronave)?`${safe(t.bagagem)?' &nbsp;·&nbsp; ':''}✈️ ${safe(t.aeronave)}`:''}</div>`:''}`;
     }).join("");
     return `<div class="card fl"><div class="fl-top"><b>${f.rota}</b> · ${f.viajantes}</div>${legs}</div>`;
   }).join("");
@@ -581,7 +637,7 @@ function buildHotel(h, idx){
   h.fotos=h.fotos||[]; h.quartos=h.quartos||[];
   const slides=h.fotos.map(s=>`<img src="${s}" alt="${h.nome}">`).join("");
   const dots=h.fotos.map((_,i)=>`<i class="${i===0?'on':''}" data-i="${i}"></i>`).join("");
-  const rooms=h.quartos.map(q=>`<tr><td><b>${q.nome}</b><br><span style="color:var(--muted)">${q.ocupacao}</span></td><td>${q.plano}</td><td><span class="pill ${q.cor}">${q.restricao}</span></td></tr>`).join("");
+  const rooms=h.quartos.map(q=>`<tr><td><b>${safe(q.nome)}</b>${safe(q.ocupacao)?`<br><span style="color:var(--muted)">${safe(q.ocupacao)}</span>`:''}</td><td>${safe(q.plano)}</td><td>${safe(q.restricao)?`<span class="pill ${q.cor}">${safe(q.restricao)}</span>`:''}</td></tr>`).join("");
   const ta=h.tripadvisor||{};
   const reviews=(ta.resenhas||[]).map(r=>`<div class="review"><span class="who">${r.who}</span> <span class="b">${bubbles(r.bolhas)}</span><br>${r.txt}</div>`).join("");
   const taBlock = ta.nota ? `<div class="ta">
@@ -981,6 +1037,7 @@ function buildPagamentoSimples(v){
   const vTemParcelas=v.parcelas>0 && v.valorParcelaNum>0;
   const vPrimeira=(v.valorParcelaNum||0)+(v.taxaUnicaNum||0);
   const vpayUrgencia='<div class="vpay-urgencia">Garanta logo este preço, os preços podem mudar a qualquer momento!</div>';
+  if(Number(v.descontoNum)>0) return `${buildDescontoBloco(v)}${vpayUrgencia}`;
   return vTemParcelas ? `<div class="vpay-eyebrow">Forma de pagamento</div>
       <div class="vpay-destaque">ATÉ ${pad(v.parcelas)}X SEM JUROS NO CARTÃO</div>
       ${v.taxaUnicaNum
