@@ -74,6 +74,7 @@ Formato exato do JSON:
   "pais": "país do destino (ex.: Brasil, Colômbia, Portugal)",
   "destinoBusca": "termo curto (2-3 palavras) de UM ÚNICO lugar para buscar uma FOTO turística no banco de imagens. REGRAS: (a) viagem para UMA cidade -> use a cidade + o traço icônico, ex.: 'Porto Seguro praia', 'Gramado inverno', 'Foz do Iguaçu cataratas'; (b) viagem por VÁRIAS cidades no EXTERIOR -> use o PAÍS, ex.: 'Colômbia paisagem', 'Portugal paisagem'; (c) viagem por VÁRIAS cidades no BRASIL -> use a cidade principal ou a região, ex.: 'Bahia praia', 'Serra Gaúcha'. NUNCA junte duas cidades no mesmo termo.",
   "destinoMensagem": "nome do destino para a mensagem de WhatsApp: a CIDADE quando for no Brasil; o PAÍS quando for fora do Brasil (ex.: 'Porto Seguro', 'Gramado', 'Colômbia', 'Portugal')",
+  "tituloViagem": "título principal da proposta, em MAIÚSCULAS, no formato 'VIAGEM A <DESTINO>' (com a crase/contração certa em português: A, AO, AOS, À, ÀS conforme o gênero e número do nome). Regras: (1) UM ÚNICO destino/cidade -> 'VIAGEM A <CIDADE>' (ex.: 'VIAGEM A RECIFE', 'VIAGEM A LISBOA', 'VIAGEM AO RIO DE JANEIRO'); (2) MAIS DE UM destino na mesma viagem -> generalize, NUNCA liste as cidades separadas por 'e': (2a) todos no mesmo estado do Brasil -> use o estado (ex.: 'VIAGEM A PERNAMBUCO'); (2b) estados diferentes mas mesma região do Brasil -> use a região (ex.: 'VIAGEM AO NORDESTE', 'VIAGEM AO SUL', 'VIAGEM AO SUDESTE'); (2c) países diferentes mas mesmo continente -> use o continente (ex.: 'VIAGEM À EUROPA', 'VIAGEM À AMÉRICA DO NORTE'); (2d) nenhuma generalização clara -> use o destino principal/primeira cidade da viagem.",
   "voos": [
     {
       "rota": "Cidade origem → Cidade destino",
@@ -88,7 +89,7 @@ Formato exato do JSON:
           "iata": "código IATA da companhia (LATAM=LA, GOL=G3, AZUL=AD, AVIANCA=AV, COPA=CM)",
           "voo": "número do voo se aparecer (ex: G3 1137), senão null",
           "saida": "HH:MM", "chegada": "HH:MM", "dur": "ex: 4h15",
-          "classe": "ex: Econômica",
+          "classe": "classe da tarifa (ex: Econômica, Premium Economy, Executiva, Primeira Classe); se o documento NÃO especificar a classe, use 'Econômica' como padrão — nunca deixe em branco ou null",
           "conexao": "descreva a conexão citando cidade/aeroporto e tempo de espera quando o documento mostrar (ex.: 'Conexão em Guarulhos (GRU) · 2h30 de espera'); use 'Voo direto' se não houver escala",
           "bagagem": "ex: Não inclui bagagem despachada"
         }
@@ -107,6 +108,18 @@ Formato exato do JSON:
   ],
   "transfer": null | { "tipo": "string (ex: Privativo, Compartilhado, Regular)", "trajeto": "string (ex: Aeroporto -> Hotel, Hotel -> Aeroporto, ou os dois se houver IN e OUT)", "detalhe": "resumo do transfer — pode incluir a data, ex: 'Saída do hotel para o aeroporto em 10/11/2026, compartilhado'" },
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
+  "carro": null | {
+    "locadora": "nome da locadora (ex: Localiza, Movida, Unidas, Hertz, Avis, Enterprise, Budget, Sixt)",
+    "categoria": "categoria do veículo tal como no documento (ex: Econômico, Intermediário, SUV, Compacto Automático)",
+    "modelo": "modelo/exemplo citado no documento (ex: Chevrolet Onix ou similar), senão null",
+    "retirada": { "local": "string (ex: Aeroporto de Recife - GIG)", "data": "DD/MM/AAAA", "hora": "HH:MM" },
+    "devolucao": { "local": "string", "data": "DD/MM/AAAA", "hora": "HH:MM" },
+    "franquia": "descrição da franquia/proteção contratada, ex: 'Proteção contra colisão e roubo com franquia reduzida' — senão null",
+    "quilometragem": "regra de km, ex: 'KM livre' ou 'Limitado a 100km/dia' — senão null",
+    "condutor": "regra sobre idade mínima/condutor adicional se citado, senão null",
+    "observacoes": "outras regras/observações relevantes citadas no documento (cancelamento, combustível, documentos exigidos), senão null",
+    "valorNum": número|null
+  },
   "extras": [ { "titulo": "string curto (ex: Passeio à Praia de Genipabu, City Tour, Ingresso Parque X)", "descricao": "o que está incluso, pode citar a data do passeio, ex: 'Dia 07/11/2026 — transporte incluso para a praia de Genipabu'" } ],
   "valores": {
     "totalNum": número (ex: 6906.51),
@@ -127,6 +140,7 @@ Regras:
   - Se o item falar em PASSEIO, EXCURSÃO, CITY TOUR, TOUR, INGRESSO, visita a uma praia/parque/atração turística (títulos como "PASSEIO À PRAIA DE X", "CITY TOUR", "INGRESSO PARQUE Y"), isso é um item de "extras" — NUNCA preencha como transfer.
   - Um mesmo orçamento pode ter os dois ao mesmo tempo (ex.: um transfer aeroporto-hotel E um passeio à parte, cada um em sua seção própria mesmo com o mesmo cabeçalho "RECEPTIVO"). Extraia cada item na seção certa, sem misturar.
 - "transfer" NÃO deve ficar null por padrão — leia o documento com atenção usando a regra acima. Só use null quando o documento realmente não incluir nenhum transfer/traslado aeroporto-hotel.
+- "carro": preencha SOMENTE quando o documento mostrar explicitamente uma locação de veículo/carro alugado (títulos como "LOCAÇÃO DE VEÍCULO", "ALUGUEL DE CARRO", "RENT A CAR", nome de locadora como Localiza/Movida/Unidas/Hertz/Avis/Enterprise). Se não houver nenhuma menção a carro alugado no documento, use null — não invente.
 - "extras" deve conter APENAS passeios, ingressos, atividades ou tours que estejam EXPLICITAMENTE INCLUSOS no orçamento. NÃO liste itens opcionais, sugeridos, à venda separadamente ou marcados como "NÃO INCLUI" — esses NÃO entram em "extras". Se não houver nenhum item incluso desse tipo, use [].
 - Parcelamento: quando o PDF disser algo como "10 x de BRL 675,85 + 1x 147,98", isso significa parcelas=10, valorParcelaNum=675.85, taxaUnicaNum=147.98. Se for só "10x de 675,85" sem valor extra, taxaUnicaNum=null.
 - Números use ponto decimal (675.85), sem "R$".
@@ -322,6 +336,10 @@ function enrich(d) {
 
   const hoje = new Date().toLocaleDateString('pt-BR');
   const destino = d.destinoResumo || primeiro.cidade || primeiro.nome || 'Sua viagem';
+  // título "VIAGEM A/AO/À <destino ou região>" — a própria IA já decide a generalização certa
+  // (estado/região/continente quando há mais de um destino); aqui só garantimos um fallback
+  // sensato para orçamentos antigos/reprocessados que não tragam esse campo.
+  const tituloViagem = d.tituloViagem || `VIAGEM A ${String(destino).toUpperCase()}`;
 
   // extras/passeios inclusos — só entram os que vieram com título ou descrição preenchidos
   const extras = Array.isArray(d.extras)
@@ -346,6 +364,7 @@ function enrich(d) {
       imagem: '',
       eyebrow: d.numero ? `Orçamento Nº ${d.numero}` : 'Orçamento de viagem',
       titulo: destino,
+      tituloViagem,
       sub: rota,
       chips
     },
@@ -361,6 +380,7 @@ function enrich(d) {
     hotel: hoteis[0] || null,
     transfer: d.transfer || null,
     seguro: d.seguro || null,
+    carro: (d.carro && d.carro.locadora) ? { fotos: [], ...d.carro } : null,
     extras,
     itens,
     valores: {
