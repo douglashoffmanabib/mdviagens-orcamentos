@@ -753,17 +753,65 @@ async function continuarAposHoteis(data, label){
   if (pendentesHoteis.length) { montarEscolhaHotel(data, label, pendentesHoteis); return; }
   await continuarAposCarro(data, label);
 }
-// ---------- Foto do carro alugado (quando o orçamento tiver locação de veículo) ----------
+// ---------- Locadora + foto do carro alugado (quando o orçamento tiver locação de veículo) ----------
+const LOCADORAS_CONHECIDAS = ['Localiza', 'Movida', 'Unidas', 'Hertz', 'Avis', 'Enterprise', 'Budget', 'Sixt', 'Foco', 'Rentcars', 'Alamo', 'National', 'Thrifty', 'Europcar'];
 async function continuarAposCarro(data, label){
-  if (data.carro && data.carro.locadora) {
-    const q = [data.carro.modelo, data.carro.categoria, 'carro aluguel'].filter(Boolean).join(' ');
-    try {
-      const r = await fetch('/api/passeio-fotos?q=' + encodeURIComponent(q));
-      const j = await r.json();
-      if (r.ok && j.fotos && j.fotos.length) { montarEscolhaCarroFoto(data, label, j.fotos); return; }
-    } catch (e) { /* segue sem foto do carro */ }
+  if (data.carro) {
+    if (!data.carro.locadora) { montarEscolhaLocadora(data, label); return; }
+    await continuarAposFotoCarro(data, label);
+    return;
   }
   await continuarAposHoteisResolvidos(data, label);
+}
+let _locadoraSeq = 0;
+function montarEscolhaLocadora(data, label){
+  const eid = 'lcd' + (_locadoraSeq++);
+  const opts = LOCADORAS_CONHECIDAS.map((nome, i) => `<div class="hotelCand" id="${eid}_c${i}" onclick="escolherLocadora('${eid}',${i})">
+    <div class="hotelCandInfo"><b>${nome}</b></div>
+  </div>`).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="hotelGrupo">
+      <div class="hotelGrupoTit">Não foi identificada a locadora do carro (${escapeHtml(data.carro.modelo || data.carro.categoria || 'carro alugado')}) — qual é?</div>
+      <div class="hotelCandGrid">${opts}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="${eid}_outra" placeholder="Outra locadora (digite o nome)" style="flex:1;min-width:200px;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:8px">
+        <button type="button" class="btn p" onclick="confirmarLocadoraOutra('${eid}')">USAR ESSE NOME</button>
+      </div>
+      <div class="fotoAcoes" style="margin-top:10px"><a href="javascript:void(0)" onclick="pularLocadora('${eid}')" class="tinyNote">Não sei / deixar em branco</a></div>
+    </div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label;
+}
+async function escolherLocadora(eid, i){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  data.carro.locadora = LOCADORAS_CONHECIDAS[i];
+  el.remove();
+  await continuarAposFotoCarro(data, label);
+}
+async function confirmarLocadoraOutra(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  const nome = ($(`${eid}_outra`).value || '').trim();
+  if (nome) data.carro.locadora = nome;
+  el.remove();
+  await continuarAposFotoCarro(data, label);
+}
+async function pularLocadora(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  el.remove();
+  await continuarAposFotoCarro(data, label);
+}
+async function continuarAposFotoCarro(data, label){
+  const q = [data.carro.locadora, data.carro.modelo, data.carro.categoria, 'carro aluguel'].filter(Boolean).join(' ');
+  try {
+    const r = await fetch('/api/passeio-fotos?q=' + encodeURIComponent(q));
+    const j = await r.json();
+    if (r.ok && j.fotos && j.fotos.length) { montarEscolhaCarroFoto(data, label, j.fotos); return; }
+  } catch (e) { /* segue para o fallback manual */ }
+  montarSemFotoCarro(data, label);
 }
 let _carroFotoSeq = 0;
 function montarEscolhaCarroFoto(data, label, fotos){
@@ -795,6 +843,34 @@ async function confirmarCarroFoto(eid){
   await continuarAposHoteisResolvidos(data, label);
 }
 async function pularCarroFoto(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  el.remove();
+  await continuarAposHoteisResolvidos(data, label);
+}
+let _semFotoCarroSeq = 0;
+function montarSemFotoCarro(data, label){
+  const eid = 'sfc' + (_semFotoCarroSeq++);
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">Não encontramos foto automaticamente para o carro (${escapeHtml(data.carro.modelo || data.carro.categoria || 'carro alugado')}). Cole o link de uma foto, se quiser, ou pule:</div>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="${eid}_url" placeholder="https://... (link direto de uma imagem)" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:8px">
+      <button type="button" class="btn p" onclick="confirmarFotoCarroManual('${eid}')">USAR ESSE LINK</button>
+    </div>
+    <div class="fotoAcoes" style="margin-top:10px"><a href="javascript:void(0)" onclick="pularFotoCarroManual('${eid}')" class="tinyNote">Seguir sem foto do carro</a></div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label;
+}
+async function confirmarFotoCarroManual(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  const url = ($(`${eid}_url`).value || '').trim();
+  if (url) data.carro.fotos = [url];
+  el.remove();
+  await continuarAposHoteisResolvidos(data, label);
+}
+async function pularFotoCarroManual(eid){
   const el = $(eid);
   const data = el._data, label = el._label;
   el.remove();
