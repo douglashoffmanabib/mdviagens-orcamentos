@@ -750,7 +750,7 @@ function render(){
   const temMapa=!enxuto && !!(temRotaIda || temRotaVolta || (temHotel&&(D.hotel.geo||D.hotel.endereco)));
   const temExtras=Array.isArray(D.extras)&&D.extras.length>0;
   const temExperiencias=!enxuto || temExtras;
-  const temCarro=!!(D.carro && D.carro.locadora);
+  const temCarro=!!(D.carro && (D.carro.locadora || D.carro.categoria || D.carro.modelo));
   const waRetirar=`https://wa.me/5531983651769?text=${encodeURIComponent(`Olá! Sobre o orçamento ${D.codigo||D.numero||''}: quero retirar estes extras e abaixar o preço final.`)}`;
   const nav=[["#sua-viagem","Sua viagem"]];
   if(temVoos) nav.push(["#voos","Voos"]);
