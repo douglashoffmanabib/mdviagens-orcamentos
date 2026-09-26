@@ -751,9 +751,61 @@ async function confirmarHoteis(eid){
 async function continuarAposHoteis(data, label){
   const pendentesHoteis = await prepararHoteis(data);
   if (pendentesHoteis.length) { montarEscolhaHotel(data, label, pendentesHoteis); return; }
+  await continuarAposCarro(data, label);
+}
+// ---------- Foto do carro alugado (quando o orçamento tiver locação de veículo) ----------
+async function continuarAposCarro(data, label){
+  if (data.carro && data.carro.locadora) {
+    const q = [data.carro.modelo, data.carro.categoria, 'carro aluguel'].filter(Boolean).join(' ');
+    try {
+      const r = await fetch('/api/passeio-fotos?q=' + encodeURIComponent(q));
+      const j = await r.json();
+      if (r.ok && j.fotos && j.fotos.length) { montarEscolhaCarroFoto(data, label, j.fotos); return; }
+    } catch (e) { /* segue sem foto do carro */ }
+  }
+  await continuarAposHoteisResolvidos(data, label);
+}
+let _carroFotoSeq = 0;
+function montarEscolhaCarroFoto(data, label, fotos){
+  const eid = 'crf' + (_carroFotoSeq++);
+  const grid = fotos.slice(0, 10).map((f, i) => `<div class="fotoCard" id="${eid}_c${i}" onclick="escolherCarroFoto('${eid}',${i})">
+    <img src="${f.thumb}" loading="lazy">
+  </div>`).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="fotoTitulo">Escolha 1 foto para o carro alugado (${escapeHtml(data.carro.modelo || data.carro.categoria || '')}) — ou pule se nenhuma servir:</div>
+    <div class="fotoGrid">${grid}</div>
+    <div class="fotoAcoes" style="margin-top:8px">
+      <button type="button" class="btn p" onclick="confirmarCarroFoto('${eid}')">USAR FOTO SELECIONADA</button>
+      <a href="javascript:void(0)" onclick="pularCarroFoto('${eid}')" class="tinyNote">Nenhuma serve, pular</a>
+    </div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._fotos = fotos; el._sel = -1;
+}
+function escolherCarroFoto(eid, i){
+  const el = $(eid);
+  el._sel = (el._sel === i) ? -1 : i;
+  el._fotos.forEach((_, idx) => { const card = $(`${eid}_c${idx}`); if (card) card.classList.toggle('sel', idx === el._sel); });
+}
+async function confirmarCarroFoto(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  if (el._sel >= 0) data.carro.fotos = [el._fotos[el._sel].url];
+  el.remove();
+  await continuarAposHoteisResolvidos(data, label);
+}
+async function pularCarroFoto(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label;
+  el.remove();
   await continuarAposHoteisResolvidos(data, label);
 }
 async function continuarAposHoteisResolvidos(data, label){
+  const pendentesPlano = planoRefeicaoPendente(data);
+  if (pendentesPlano.length) { montarEscolhaPlano(data, label, pendentesPlano); return; }
+  await continuarAposFotoDestino(data, label);
+}
+async function continuarAposFotoDestino(data, label){
   // oferece as fotos do destino para escolher a capa — mesmo em cotações só de voo (sem hotel),
   // que também merecem uma foto do destino no orçamento
   if (data.destinoBusca || data.destinoResumo) {
@@ -761,6 +813,59 @@ async function continuarAposHoteisResolvidos(data, label){
     if (fotos && fotos.length) { montarEscolha(data, label, fotos); return; }
   }
   await finalizar(data, label, null);
+}
+// ---------- Plano de refeição do hotel (quando a proposta não especificar) ----------
+const PLANOS_REFEICAO = ['Sem refeição', 'Café da manhã', 'Café da manhã + Almoço ou Jantar', 'Café da manhã + Almoço + Jantar', 'All inclusive'];
+function planoRefeicaoPendente(data){
+  const hoteis = Array.isArray(data.hoteis) ? data.hoteis : [];
+  const pendentes = [];
+  hoteis.forEach((h, hi) => {
+    if (!h || !Array.isArray(h.quartos)) return;
+    h.quartos.forEach((q, qi) => {
+      if (!q) return;
+      const p = String(q.plano || '').trim();
+      if (!p || /^(null|undefined)$/i.test(p)) pendentes.push({ hi, qi, hotelNome: h.nome, quartoNome: q.nome });
+    });
+  });
+  return pendentes;
+}
+let _planoSeq = 0;
+function montarEscolhaPlano(data, label, pendentes){
+  const eid = 'pln' + (_planoSeq++);
+  const grupos = pendentes.map((p, gi) => {
+    const opts = PLANOS_REFEICAO.map((op, oi) => `<div class="hotelCand" id="${eid}_g${gi}_c${oi}" onclick="escolherPlano('${eid}',${gi},${oi})">
+      <div class="hotelCandInfo"><b>${op}</b></div>
+    </div>`).join('');
+    return `<div class="hotelGrupo">
+      <div class="hotelGrupoTit">Não foi identificado regime alimentar de "${escapeHtml(p.hotelNome || '')}"${p.quartoNome ? ` — ${escapeHtml(p.quartoNome)}` : ''}, qual devo utilizar?</div>
+      <div class="hotelCandGrid">${opts}</div>
+    </div>`;
+  }).join('');
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    ${grupos}
+    <div class="fotoAcoes"><button class="btn p" onclick="confirmarPlano('${eid}')">USAR SELEÇÃO E CONTINUAR →</button></div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._pendentes = pendentes; el._sel = {}; // nada pré-selecionado — o usuário precisa escolher
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function escolherPlano(eid, gi, oi){
+  const el = $(eid);
+  el._sel[gi] = oi;
+  for (let k = 0; k < PLANOS_REFEICAO.length; k++) { const card = $(`${eid}_g${gi}_c${k}`); if (card) card.classList.toggle('sel', k === oi); }
+}
+async function confirmarPlano(eid){
+  const el = $(eid);
+  const data = el._data, label = el._label, pendentes = el._pendentes, sel = el._sel;
+  const faltando = pendentes.some((p, gi) => sel[gi] == null);
+  if (faltando) { alert('Selecione o regime alimentar de todos os quartos antes de continuar.'); return; }
+  el.remove();
+  pendentes.forEach((p, gi) => {
+    const oi = sel[gi];
+    const h = data.hoteis[p.hi];
+    if (h && h.quartos && h.quartos[p.qi]) h.quartos[p.qi].plano = PLANOS_REFEICAO[oi];
+  });
+  await continuarAposFotoDestino(data, label);
 }
 function brlExtrair(n){ return 'R$ ' + (Number(n)||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
 function pad2Extrair(n){ return String(n).padStart(2, '0'); }
