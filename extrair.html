@@ -852,15 +852,32 @@ let _semFotoCarroSeq = 0;
 function montarSemFotoCarro(data, label){
   const eid = 'sfc' + (_semFotoCarroSeq++);
   $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
-    <div class="fotoTitulo">Não encontramos foto automaticamente para o carro (${escapeHtml(data.carro.modelo || data.carro.categoria || 'carro alugado')}). Cole o link de uma foto, se quiser, ou pule:</div>
+    <div class="fotoTitulo">Não encontramos foto automaticamente para o carro (${escapeHtml(data.carro.modelo || data.carro.categoria || 'carro alugado')}). Cole o link DIRETO de uma imagem (termina em .jpg, .png etc — não o link de uma página), se quiser, ou pule:</div>
     <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <input type="text" id="${eid}_url" placeholder="https://... (link direto de uma imagem)" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:8px">
-      <button type="button" class="btn p" onclick="confirmarFotoCarroManual('${eid}')">USAR ESSE LINK</button>
+      <input type="text" id="${eid}_url" placeholder="https://.../foto.jpg" style="flex:1;min-width:240px;padding:8px 10px;border:1px solid var(--line,#ccc);border-radius:8px" oninput="pretestarFotoCarroManual('${eid}')">
+      <button type="button" class="btn p" id="${eid}_btn" disabled onclick="confirmarFotoCarroManual('${eid}')">USAR ESSE LINK</button>
     </div>
+    <div id="${eid}_preview" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
     <div class="fotoAcoes" style="margin-top:10px"><a href="javascript:void(0)" onclick="pularFotoCarroManual('${eid}')" class="tinyNote">Seguir sem foto do carro</a></div>
   </div>`);
   const el = $(eid);
   el._data = data; el._label = label;
+}
+let _pretestFotoCarroTimer = null;
+function pretestarFotoCarroManual(eid){
+  clearTimeout(_pretestFotoCarroTimer);
+  const url = ($(`${eid}_url`).value || '').trim();
+  const prev = $(`${eid}_preview`);
+  const btn = $(`${eid}_btn`);
+  if (!url) { prev.innerHTML = ''; btn.disabled = true; return; }
+  prev.innerHTML = 'Carregando prévia…';
+  btn.disabled = true;
+  _pretestFotoCarroTimer = setTimeout(() => {
+    const img = new Image();
+    img.onload = () => { prev.innerHTML = `<img src="${url}" style="width:120px;height:80px;object-fit:cover;border-radius:8px;display:block;margin-top:4px"><span style="color:#2e7d32">✓ imagem carregou certinho</span>`; btn.disabled = false; };
+    img.onerror = () => { prev.innerHTML = '<span style="color:#c0392b">✗ esse link não carregou como imagem — confira se é o link direto da foto</span>'; btn.disabled = true; };
+    img.src = url;
+  }, 400);
 }
 async function confirmarFotoCarroManual(eid){
   const el = $(eid);
