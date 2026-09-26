@@ -109,7 +109,7 @@ Formato exato do JSON:
   "transfer": null | { "tipo": "string (ex: Privativo, Compartilhado, Regular)", "trajeto": "string (ex: Aeroporto -> Hotel, Hotel -> Aeroporto, ou os dois se houver IN e OUT)", "detalhe": "resumo do transfer — pode incluir a data, ex: 'Saída do hotel para o aeroporto em 10/11/2026, compartilhado'" },
   "seguro": null | { "nome": "string", "plano": "string", "periodo": "string", "viajantes": "string" },
   "carro": null | {
-    "locadora": "nome da locadora (ex: Localiza, Movida, Unidas, Hertz, Avis, Enterprise, Budget, Sixt)",
+    "locadora": "nome da locadora (ex: Localiza, Movida, Unidas, Hertz, Avis, Enterprise, Budget, Sixt) — se o documento não citar o nome da locadora (só um código de tarifa/categoria), use null, não invente",
     "categoria": "categoria do veículo tal como no documento (ex: Econômico, Intermediário, SUV, Compacto Automático)",
     "modelo": "modelo/exemplo citado no documento (ex: Chevrolet Onix ou similar), senão null",
     "retirada": { "local": "string (ex: Aeroporto de Recife - GIG)", "data": "DD/MM/AAAA", "hora": "HH:MM" },
@@ -380,7 +380,7 @@ function enrich(d) {
     hotel: hoteis[0] || null,
     transfer: d.transfer || null,
     seguro: d.seguro || null,
-    carro: (d.carro && d.carro.locadora) ? { fotos: [], ...d.carro } : null,
+    carro: (d.carro && (d.carro.locadora || d.carro.categoria || d.carro.modelo)) ? { fotos: [], ...d.carro } : null,
     extras,
     itens,
     valores: {
