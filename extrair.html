@@ -661,7 +661,90 @@ async function continuarAposPreco(data, label){
   await continuarAposVoos(data, label);
 }
 async function continuarAposVoos(data, label){
+  if (!data._confirmouDestPax) { montarConfirmaDestinoPessoas(data, label); return; }
   await continuarAposHoteis(data, label);
+}
+// ---------- Confirmação de destino e nº de viajantes (ex.: voo para Recife, mas destino é Porto de Galinhas) ----------
+let _dpSeq = 0;
+function montarConfirmaDestinoPessoas(data, label){
+  const eid = 'dpx' + (_dpSeq++);
+  const destino = data.destinoResumo || data.destinoBusca || '';
+  const qtd = extrairQtdPessoas(data);
+  $('res').insertAdjacentHTML('beforeend', `<div class="card-res" id="${eid}">
+    <div class="hotelGrupo">
+      <div class="hotelGrupoTit">Destino detectado: <b>${escapeHtml(destino) || '(não identificado)'}</b></div>
+      <div class="hotelCandGrid">
+        <div class="hotelCand" id="${eid}_d1" onclick="dpDestino('${eid}',1)"><div class="hotelCandInfo"><b>Sim, é este</b></div></div>
+        <div class="hotelCand" id="${eid}_d0" onclick="dpDestino('${eid}',0)"><div class="hotelCandInfo"><b>Outro destino</b></div></div>
+      </div>
+      <div id="${eid}_dout" style="display:none;margin-top:10px"><input id="${eid}_dinp" type="text" placeholder="Digite o destino correto (ex.: Porto de Galinhas, PE)" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:15px"></div>
+    </div>
+    <div class="hotelGrupo">
+      <div class="hotelGrupoTit">Número de pessoas detectado: <b>${qtd || '(não identificado)'}</b></div>
+      <div class="hotelCandGrid">
+        <div class="hotelCand" id="${eid}_p1" onclick="dpPessoas('${eid}',1)"><div class="hotelCandInfo"><b>Confirmo</b></div></div>
+        <div class="hotelCand" id="${eid}_p0" onclick="dpPessoas('${eid}',0)"><div class="hotelCandInfo"><b>É outro número</b></div></div>
+      </div>
+      <div id="${eid}_pout" style="display:none;margin-top:10px">
+        <label style="display:block;margin-bottom:6px">Adultos: <input id="${eid}_ad" type="number" min="1" value="${qtd || 2}" style="width:70px;padding:8px;border:1px solid #ccc;border-radius:8px"></label>
+        <label style="display:block;margin-bottom:6px">Crianças: <input id="${eid}_cr" type="number" min="0" value="0" oninput="dpIdades('${eid}')" style="width:70px;padding:8px;border:1px solid #ccc;border-radius:8px"></label>
+        <div id="${eid}_ids"></div>
+      </div>
+    </div>
+    <div class="fotoAcoes"><button class="btn p" onclick="confirmarDestinoPessoas('${eid}')">CONFIRMAR E CONTINUAR →</button></div>
+  </div>`);
+  const el = $(eid);
+  el._data = data; el._label = label; el._d = null; el._p = null; el._qtd = qtd;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function dpDestino(eid, v){ const el = $(eid); el._d = v; $(eid+'_d1').classList.toggle('sel', v===1); $(eid+'_d0').classList.toggle('sel', v===0); $(eid+'_dout').style.display = v ? 'none' : 'block'; }
+function dpPessoas(eid, v){ const el = $(eid); el._p = v; $(eid+'_p1').classList.toggle('sel', v===1); $(eid+'_p0').classList.toggle('sel', v===0); $(eid+'_pout').style.display = v ? 'none' : 'block'; }
+function dpIdades(eid){
+  const n = Math.max(0, Math.min(10, parseInt($(eid+'_cr').value, 10) || 0));
+  let h = '';
+  for (let i = 0; i < n; i++) h += `<label style="display:inline-block;margin:0 10px 6px 0">Idade da criança ${i+1}: <input class="${eid}_idade" type="number" min="0" max="17" style="width:60px;padding:8px;border:1px solid #ccc;border-radius:8px"></label>`;
+  $(eid+'_ids').innerHTML = h;
+}
+function confirmarDestinoPessoas(eid){
+  const el = $(eid), data = el._data, label = el._label;
+  if (el._d == null) { alert('Confirme o destino (Sim ou Outro).'); return; }
+  if (el._p == null) { alert('Confirme o número de pessoas.'); return; }
+  let novoDestino = '';
+  if (el._d === 0) {
+    novoDestino = ($(eid+'_dinp').value || '').trim();
+    if (!novoDestino) { alert('Digite o destino correto.'); return; }
+  }
+  let txtPax = '', total = 0;
+  if (el._p === 0) {
+    const ad = parseInt($(eid+'_ad').value, 10) || 0;
+    const cr = parseInt($(eid+'_cr').value, 10) || 0;
+    if (ad < 1) { alert('Informe ao menos 1 adulto.'); return; }
+    const idades = Array.from(document.querySelectorAll('.' + eid + '_idade')).map(i => i.value.trim());
+    if (cr > 0 && (idades.length < cr || idades.some(x => x === ''))) { alert('Informe a idade de cada criança.'); return; }
+    total = ad + cr;
+    txtPax = `${ad} ${ad === 1 ? 'adulto' : 'adultos'}`;
+    if (cr > 0) txtPax += ` + ${cr} ${cr === 1 ? 'criança' : 'crianças'} (${idades.map(x => x + (x === '1' ? ' ano' : ' anos')).join(', ')})`;
+    data.pessoasDetalhe = { adultos: ad, criancas: idades.map(x => parseInt(x, 10)) };
+  }
+  el.remove();
+  if (novoDestino) {
+    data.destinoResumo = novoDestino; data.destinoBusca = novoDestino; data.destinoMensagem = novoDestino;
+    if (data.hero) { data.hero.titulo = novoDestino; data.hero.tituloViagem = 'VIAGEM A ' + novoDestino.toUpperCase(); }
+    if (Array.isArray(data.resumo)) { const r = data.resumo.find(s => /destino/i.test(s.k || '')); if (r) r.v = novoDestino; }
+    data.fotoCapa = null;
+  }
+  if (txtPax) {
+    let antigo = '';
+    if (Array.isArray(data.resumo)) { const r = data.resumo.find(s => /viajante/i.test(s.k || '')); if (r) { antigo = r.v; r.v = txtPax; } }
+    if (data.hero && Array.isArray(data.hero.chips)) {
+      const i = antigo ? data.hero.chips.indexOf(antigo) : -1;
+      if (i >= 0) data.hero.chips[i] = txtPax; else data.hero.chips.push(txtPax);
+    }
+    if (Array.isArray(data.voos)) data.voos.forEach(v => { if (v) v.viajantes = txtPax; });
+    data.valores = data.valores || {}; data.valores.pessoas = total;
+  }
+  data._confirmouDestPax = true;
+  continuarAposHoteis(data, label);
 }
 // ---------- Identificação do hotel certo (Google Places) — evita puxar fotos de um hotel ----------
 // homônimo em outra cidade: busca até 5 candidatos por nome; se só achar 1, usa direto; se achar
