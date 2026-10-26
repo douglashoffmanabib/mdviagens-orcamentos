@@ -673,13 +673,20 @@ async function prepararHoteis(data){
     const h = hoteis[hi];
     if (!h || !h.nome || (h.fotos && h.fotos.length)) continue; // sem nome, ou já resolvido antes
     try {
-      const q = encodeURIComponent(`${h.nome} ${h.endereco || ''}`.trim());
+      // inclui a cidade/destino na busca — sem isso o Google devolve hotéis homônimos de outras cidades
+      const cidadeBusca = h.cidade || data.destinoBusca || data.destinoResumo || '';
+      const q = encodeURIComponent(`${h.nome} ${h.endereco || ''} ${cidadeBusca}`.replace(/\s+/g, ' ').trim());
       const r = await fetch('/api/hotel-photos?q=' + q);
       if (!r.ok) { h._hotelSemMatch = true; continue; }
       const j = await r.json();
-      const candidatos = j.candidatos || [];
+      let candidatos = j.candidatos || [];
       if (!candidatos.length) { h._hotelSemMatch = true; continue; }
-      if (candidatos.length === 1) {
+      // ordena pelos nomes mais parecidos com o hotel da proposta
+      const _tok = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(t => t && !['hotel','resort','pousada','by','the','e','de','do','da'].includes(t));
+      const _sim = c => { const a = _tok(h.nome), b = new Set(_tok(c.name)); return a.length ? a.filter(t => b.has(t)).length / a.length : 0; };
+      candidatos = candidatos.map(c => ({ ...c, _s: _sim(c) })).sort((x, y) => y._s - x._s);
+      // só usa direto se for 1 candidato E o nome bater; caso contrário pergunta qual é o certo
+      if (candidatos.length === 1 && candidatos[0]._s >= 0.6) {
         await aplicarHotelEscolhido(h, candidatos[0].id);
       } else {
         pendentes.push({ hi, nome: h.nome, candidatos });
